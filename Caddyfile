@@ -159,10 +159,6 @@ airflow.correlion.ai {
 ai-dev.correlion.ai {
       encode gzip zstd
 
-      basic_auth /llm/* {
-      admin $2a$14$qDVLwqJAN8ozprtKFZXCienkI//RWZRJOLUFaKIvAK8Uci0m.izES
-  }
-
       reverse_proxy localhost:8080
 
       header {
