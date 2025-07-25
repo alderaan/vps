@@ -2,7 +2,7 @@ services:
   ai-dev-server:
     image: registry.correlion.ai/ai-dev-server:latest
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     environment:
       - PYTHONUNBUFFERED=1
     healthcheck:
