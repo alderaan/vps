@@ -1,0 +1,23 @@
+# In: ~/dbt/docker-compose.yml
+services:
+  dbt:
+    image: ghcr.io/dbt-labs/dbt-postgres:1.8.latest
+
+    env_file:
+      - .env
+
+    volumes:
+      # Use the variable if provided, otherwise default to '~/dtc_dbt'.
+      # This works for ALL docker compose commands.
+      - ${DBT_PROJECT_PATH:-~/dtc_backend/dtc_dbt}:/usr/app/dbt
+      - ${DBT_PROJECT_PATH:-~/dtc_backend/dtc_dbt}/profiles:/root/.dbt/
+
+    working_dir: /usr/app/dbt
+
+    networks:
+      - supabase_network
+
+networks:
+  supabase_network:
+    name: supabase_default
+    external: true

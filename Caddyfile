@@ -1,0 +1,157 @@
+# Global options (optional, but good for setting your email for Let's Encrypt)
+{
+    email david@correlion.ai # Replace with your actual email address
+}
+
+# Redirect root and www to LinkedIn
+correlion.ai, www.correlion.ai {
+    redir https://www.linkedin.com/in/david-lucker-a4727374/ permanent
+}
+
+
+n8n.correlion.ai {
+    # Enable compression for better performance
+    encode gzip zstd
+
+    # Log errors to a file (optional, but helpful for troubleshooting)
+    # Make sure the /var/log/caddy directory exists and Caddy has permissions
+    # log {
+    #    output file /var/log/caddy/n8n.correlion.ai.log
+    #    level INFO
+    # }
+
+    # Proxy requests to your n8n instance
+    # n8n is running in Docker and exposed on port 5678 on the host
+    reverse_proxy localhost:5678
+
+    # Add recommended security headers
+    header {
+        # Enable HTTP Strict Transport Security (HSTS)
+        # This tells browsers to always connect via HTTPS for this site
+        Strict-Transport-Security "max-age=31536000;"
+        # Improve XSS protection
+        X-XSS-Protection "1; mode=block"
+        # Prevent MIME type sniffing
+        X-Content-Type-Options "nosniff"
+        # Prevent clickjacking
+        X-Frame-Options "DENY"
+        # Control referrer information
+        Referrer-Policy "strict-origin-when-cross-origin"
+        # Optional: Permissions Policy (can be more specific if needed)
+        # Permissions-Policy "interest-cohort=()" # Disables Google's FLoC
+    }
+}
+
+spacegame.correlion.ai { 
+    encode gzip zstd
+
+    # Set the root directory for your game's files
+    root * /var/www/spacegame
+
+    # Enable the static file server
+    # Caddy will automatically look for index.html
+    file_server
+
+    # Optional: Add security headers (good practice)
+    header {
+        Strict-Transport-Security "max-age=31536000;"
+        X-XSS-Protection "1; mode=block"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY" # Or SAMEORIGIN if your game needs to be iframed by itself
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+}
+
+
+# If you want Caddy to manage certificates for other domains later,
+# you can add more blocks like the one above for each domain.
+
+# You can also add a global options block at the top if needed, for example:
+# {
+#    email your-email@example.com  # Set your email for Let's Encrypt notifications
+# }
+
+
+# Supabase API (PostgREST, GoTrue, Kong, etc.)
+supabase.correlion.ai {
+    encode gzip zstd
+
+    reverse_proxy localhost:8000
+
+    header {
+        Strict-Transport-Security "max-age=31536000;"
+        X-XSS-Protection "1; mode=block"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+}
+
+
+registry.correlion.ai {
+  encode gzip zstd
+  reverse_proxy localhost:5000 {
+    # These headers are often important for Docker Registry proxying
+    header_up Host {host}
+    header_up X-Real-IP {remote_ip}
+    header_up X-Forwarded-For {remote_ip}
+    header_up X-Forwarded-Proto {scheme}
+  }
+
+  # Add recommended security headers for the registry
+  header {
+    Strict-Transport-Security "max-age=31536000;"
+    X-XSS-Protection "1; mode=block"
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "DENY"
+    Referrer-Policy "strict-origin-when-cross-origin"
+  }
+}
+
+dtc.correlion.ai {
+    encode gzip zstd
+
+    # Proxy requests to your dtc-frontend Docker container
+    reverse_proxy localhost:8082
+
+    # Standard security headers
+    header {
+        Strict-Transport-Security "max-age=31536000;"
+        X-XSS-Protection "1; mode=block"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+}
+
+airflow.correlion.ai {
+    # Enable compression for better performance
+    encode gzip zstd
+
+    # Proxy requests to the Airflow container on port 8081
+    # and pass the original 'Host' header to the backend.
+    reverse_proxy localhost:8081 {
+        header_up Host {host}
+    }
+
+    # Recommended security headers, including our specific fixes.
+    header {
+        # Enforce HTTPS connections.
+        Strict-Transport-Security "max-age=31536000;"
+
+        # Standard XSS protection.
+        X-XSS-Protection "1; mode=block"
+
+        # Prevent browser from guessing content types.
+        X-Content-Type-Options "nosniff"
+
+        # Allow Airflow UI to be embedded in its own frames (fixed the Security page loading).
+        X-Frame-Options "SAMEORIGIN"
+
+        # Control referrer information.
+        Referrer-Policy "strict-origin-when-cross-origin"
+
+        # Automatically upgrade http requests to https in the browser (fixed the Mixed Content error).
+        Content-Security-Policy "upgrade-insecure-requests"
+    }
+}

@@ -1,0 +1,30 @@
+services:
+  n8n:
+    image: n8nio/n8n
+    restart: always
+    ports:
+      - "5678:5678"
+    networks:
+      - default
+      - supabase
+    environment:
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      APIFY_API_KEY: ${APIFY_API_KEY}
+      BROWSERLESS_TOKEN: ${BROWSERLESS_TOKEN}
+      GENERIC_TIMEZONE: ${GENERIC_TIMEZONE}
+      N8N_RUNNERS_ENABLED: ${N8N_RUNNERS_ENABLED}
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: ${N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS}
+      N8N_HOST: ${N8N_HOST}
+      N8N_PROTOCOL: ${N8N_PROTOCOL}
+      WEBHOOK_URL: ${WEBHOOK_URL}
+      # Uncomment if using basic auth
+      # N8N_BASIC_AUTH_ACTIVE: ${N8N_BASIC_AUTH_ACTIVE}
+      # N8N_BASIC_AUTH_USER: ${N8N_BASIC_AUTH_USER}
+      # N8N_BASIC_AUTH_PASSWORD: ${N8N_BASIC_AUTH_PASSWORD}
+    volumes:
+      - ./data:/home/node/.n8n
+
+networks:
+  supabase:
+    name: supabase_default
+    external: true

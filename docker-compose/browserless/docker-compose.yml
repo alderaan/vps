@@ -1,0 +1,17 @@
+services:
+    browserless:
+      image: ghcr.io/browserless/chromium
+      container_name: browserless-chromium
+      restart: unless-stopped
+      environment:
+        - TOKEN=${BROWSERLESS_TOKEN}
+      networks:
+        - supabase
+      # Optional: expose port if other services need direct access
+      # ports:
+      #   - "127.0.0.1:3000:3000"
+
+networks:
+  supabase:
+    name: supabase_default
+    external: true
