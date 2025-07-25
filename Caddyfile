@@ -155,3 +155,21 @@ airflow.correlion.ai {
         Content-Security-Policy "upgrade-insecure-requests"
     }
 }
+
+ai-dev.correlion.ai {
+      encode gzip zstd
+
+      basic_auth /llm/* {
+      admin $2a$14$qDVLwqJAN8ozprtKFZXCienkI//RWZRJOLUFaKIvAK8Uci0m.izES
+  }
+
+      reverse_proxy localhost:8080
+
+      header {
+          Strict-Transport-Security "max-age=31536000;"
+          X-XSS-Protection "1; mode=block"
+          X-Content-Type-Options "nosniff"
+          X-Frame-Options "DENY"
+          Referrer-Policy "strict-origin-when-cross-origin"
+      }
+  }
