@@ -242,36 +242,57 @@ async def n8n_search_workflows(query: str) -> List[Dict]:
 
 @mcp.tool
 async def n8n_backup_workflows() -> Dict:
-    """Run the n8n workflow backup script to backup all workflows to git."""
+    """Run the n8n workflow backup via HostAgent API to backup all workflows to git."""
     try:
-        # Run the backup script from the mounted scripts directory
-        result = subprocess.run(
-            ["/scripts/backup-n8n-workflows.sh"],
-            capture_output=True,
-            text=True,
-            timeout=300  # 5 minute timeout
-        )
+        # Get HostAgent bearer token from environment
+        host_agent_token = os.getenv("HOST_AGENT_BEARER_TOKEN")
+        if not host_agent_token:
+            return {
+                "success": False,
+                "error": "HOST_AGENT_BEARER_TOKEN environment variable is required"
+            }
         
-        return {
-            "success": result.returncode == 0,
-            "returncode": result.returncode,
-            "stdout": result.stdout,
-            "stderr": result.stderr
-        }
-    except subprocess.TimeoutExpired:
+        # Call HostAgent backup endpoint
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "http://127.0.0.1:9000/backup/n8n",
+                headers={
+                    "Authorization": f"Bearer {host_agent_token}",
+                    "Content-Type": "application/json"
+                },
+                timeout=300  # 5 minute timeout
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                return {
+                    "success": True,
+                    "status": result.get("status"),
+                    "timestamp": result.get("timestamp"),
+                    "message": result.get("message"),
+                    "output": result.get("output")
+                }
+            else:
+                error_detail = response.text
+                return {
+                    "success": False,
+                    "error": f"HostAgent API error ({response.status_code}): {error_detail}"
+                }
+                
+    except httpx.TimeoutException:
         return {
             "success": False,
-            "error": "Backup script timed out after 5 minutes"
+            "error": "HostAgent backup request timed out after 5 minutes"
         }
-    except FileNotFoundError:
+    except httpx.ConnectError:
         return {
             "success": False,
-            "error": "Backup script not found at /scripts/backup-n8n-workflows.sh"
+            "error": "Could not connect to HostAgent service at http://127.0.0.1:9000"
         }
     except Exception as e:
         return {
             "success": False,
-            "error": f"Unexpected error running backup script: {str(e)}"
+            "error": f"Unexpected error calling HostAgent: {str(e)}"
         }
 
 
