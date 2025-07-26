@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     """Application settings with environment variable support."""
     
     bearer_token: str
-    host: str = "127.0.0.1"
+    host: str = "0.0.0.0"
     port: int = 9000
     backup_script_path: str = "/home/david/backup-n8n-workflows.sh"
     
