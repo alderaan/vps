@@ -255,7 +255,7 @@ async def n8n_backup_workflows() -> Dict:
         # Call HostAgent backup endpoint
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                "http://127.0.0.1:9000/backup/n8n",
+                "http://host.docker.internal:9000/backup/n8n",
                 headers={
                     "Authorization": f"Bearer {host_agent_token}",
                     "Content-Type": "application/json"
@@ -287,7 +287,7 @@ async def n8n_backup_workflows() -> Dict:
     except httpx.ConnectError:
         return {
             "success": False,
-            "error": "Could not connect to HostAgent service at http://127.0.0.1:9000"
+            "error": "Could not connect to HostAgent service at http://host.docker.internal:9000"
         }
     except Exception as e:
         return {
