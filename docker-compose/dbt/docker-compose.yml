@@ -2,6 +2,7 @@
 services:
   dbt:
     image: ghcr.io/dbt-labs/dbt-postgres:1.8.latest
+    container_name: dbt
 
     env_file:
       - .env

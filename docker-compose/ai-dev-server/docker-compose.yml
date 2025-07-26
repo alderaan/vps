@@ -1,6 +1,7 @@
 services:
   ai-dev-server:
     image: registry.correlion.ai/ai-dev-server:latest
+    container_name: ai-dev-server
     ports:
       - "127.0.0.1:8080:8080"
     volumes:

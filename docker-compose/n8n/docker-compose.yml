@@ -1,6 +1,7 @@
 services:
   n8n:
     image: n8nio/n8n
+    container_name: n8n
     restart: always
     ports:
       - "127.0.0.1:5678:5678"
