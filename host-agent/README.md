@@ -69,14 +69,26 @@ host-agent/
 
 ## VPS Deployment
 
-### 1. Copy Project to VPS
+### Quick Deploy (Recommended)
+
+After initial setup, use the deploy script for easy updates:
 
 ```bash
-# From your local machine (copy entire vps repo)
-scp -r vps/ david@your-vps:/home/david/
+cd /home/david/vps
+./deploy.sh
 ```
 
-### 2. Configure Environment
+### Initial Setup
+
+#### 1. Clone Project to VPS
+
+```bash
+# On VPS - one time setup
+cd /home/david
+git clone git@github.com:yourusername/vps.git
+```
+
+#### 2. Configure Environment
 
 ```bash
 # On VPS
@@ -93,7 +105,7 @@ PORT=9000
 BACKUP_SCRIPT_PATH=/home/david/vps/backup-n8n-workflows.sh
 ```
 
-### 3. Install Dependencies
+#### 3. Install Dependencies
 
 ```bash
 # Ensure uv is installed
@@ -104,7 +116,7 @@ source ~/.bashrc
 uv sync
 ```
 
-### 4. Setup Systemd Service
+#### 4. Setup Systemd Service
 
 ```bash
 # Copy service file
@@ -122,7 +134,7 @@ sudo systemctl start host-agent
 sudo systemctl status host-agent
 ```
 
-### 5. Verify Installation
+#### 5. Verify Installation
 
 ```bash
 # Check service is running
