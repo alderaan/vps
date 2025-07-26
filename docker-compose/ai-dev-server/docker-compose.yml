@@ -3,6 +3,8 @@ services:
     image: registry.correlion.ai/ai-dev-server:latest
     ports:
       - "127.0.0.1:8080:8080"
+    volumes:
+        - /home/david/scripts:/scripts
     environment:
       - PYTHONUNBUFFERED=1
       - MCP_BEARER_TOKEN=${MCP_BEARER_TOKEN}
