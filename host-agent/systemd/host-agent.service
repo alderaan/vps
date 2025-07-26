@@ -7,12 +7,12 @@ Wants=docker.service
 Type=simple
 User=david
 Group=david
-WorkingDirectory=/home/david/host-agent
+WorkingDirectory=/home/david/vps/host-agent
 Environment="PYTHONUNBUFFERED=1"
-Environment="PATH=/home/david/host-agent/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PATH=/home/david/vps/host-agent/.venv/bin:/usr/local/bin:/usr/bin:/bin"
 
-# Use uv to run the application
-ExecStart=/usr/local/bin/uv run python -m host_agent.main
+# Use uv to run the application  
+ExecStart=/usr/local/bin/uv run python src/host_agent/main.py
 ExecReload=/bin/kill -HUP $MAINPID
 
 # Restart configuration
@@ -28,7 +28,7 @@ NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectHome=read-only
 ProtectSystem=strict
-ReadWritePaths=/home/david/host-agent /home/david/n8n-workflows-backup
+ReadWritePaths=/home/david/vps/host-agent /home/david/n8n-workflows-backup
 
 # Logging
 StandardOutput=journal
