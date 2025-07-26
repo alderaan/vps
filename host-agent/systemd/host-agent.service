@@ -28,7 +28,7 @@ NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectHome=read-only
 ProtectSystem=strict
-ReadWritePaths=/home/david/vps/host-agent /home/david/n8n-workflows-backup
+ReadWritePaths=/home/david/vps/host-agent /home/david/n8n-workflows-backup /home/david/.cache
 
 # Logging
 StandardOutput=journal
