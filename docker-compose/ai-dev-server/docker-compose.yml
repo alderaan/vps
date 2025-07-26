@@ -12,6 +12,7 @@ services:
       - MCP_BEARER_TOKEN=${MCP_BEARER_TOKEN}
       - N8N_BASE_URL=${N8N_BASE_URL}
       - N8N_API_KEY=${N8N_API_KEY}
+      - HOST_AGENT_BEARER_TOKEN=${HOST_AGENT_BEARER_TOKEN}
       
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
