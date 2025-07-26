@@ -1,9 +1,23 @@
 import logging
+import sys
+from pathlib import Path
+
+# Add src to path for direct execution
+if __name__ == "__main__":
+    src_path = Path(__file__).parent.parent
+    sys.path.insert(0, str(src_path))
+
 from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
-from .config import settings
-from .backup import backup_n8n_workflows, BackupError
+
+try:
+    from .config import settings
+    from .backup import backup_n8n_workflows, BackupError
+except ImportError:
+    # Fallback for direct execution
+    from host_agent.config import settings
+    from host_agent.backup import backup_n8n_workflows, BackupError
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

@@ -2,7 +2,11 @@ import subprocess
 import logging
 from pathlib import Path
 from datetime import datetime
-from .config import settings
+
+try:
+    from .config import settings
+except ImportError:
+    from host_agent.config import settings
 
 logger = logging.getLogger(__name__)
 
