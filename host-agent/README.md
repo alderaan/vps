@@ -193,13 +193,40 @@ All configuration is handled via environment variables:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `BEARER_TOKEN` | *(required)* | Authentication token for API access |
-| `HOST` | `127.0.0.1` | Server bind address (keep localhost for security) |
+| `HOST` | `127.0.0.1` | Server bind address - use `0.0.0.0` for Docker container access |
 | `PORT` | `9000` | Server port |
 | `BACKUP_SCRIPT_PATH` | `/home/david/vps/backup-n8n-workflows.sh` | Path to backup script |
 
+## Docker Integration
+
+### Container Access Configuration
+
+For Docker containers to access HostAgent, configure:
+
+```bash
+# In .env file
+HOST=0.0.0.0  # Allow container access
+PORT=9000
+```
+
+**Security Note**: While binding to `0.0.0.0`, the service remains secure because:
+- Port 9000 is not exposed externally (localhost binding in systemd)
+- UFW firewall blocks external access
+- Bearer token authentication required for all operations
+
+### Container Communication
+
+Containers access HostAgent using `host.docker.internal:9000`:
+
+```bash
+# From container
+curl -X POST http://host.docker.internal:9000/backup/n8n \
+  -H "Authorization: Bearer $HOST_AGENT_BEARER_TOKEN"
+```
+
 ## Security Features
 
-- **Local-only binding**: Service only accepts connections from localhost
+- **Network isolation**: Service accessible only from localhost and Docker containers
 - **Bearer token authentication**: All operations require valid token
 - **Systemd security**: Service runs with restricted permissions
 - **Resource limits**: Memory and CPU limits configured

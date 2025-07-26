@@ -165,16 +165,51 @@ sudo systemctl restart caddy
 
 ## Docker Deployment
 
-```bash
-# Build and run with Docker Compose
-docker-compose up --build
+### Standard Deployment
 
-# Or build manually
-docker build -t ai-dev-server .
-docker run -p 127.0.0.1:8080:8080 ai-dev-server  # Bind to localhost only
+```bash
+# Deploy via VPS deployment script
+cd /home/david/vps
+./deploy.sh
+
+# Or manually with Docker Compose
+cd docker-compose/ai-dev-server
+docker-compose up -d
 
 # Health check
 curl http://localhost:8080/health
+```
+
+### Docker Networking Requirements
+
+The ai-dev-server container needs to communicate with host services (HostAgent):
+
+```yaml
+# docker-compose/ai-dev-server/docker-compose.yml
+services:
+  ai-dev-server:
+    container_name: ai-dev-server
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # Enable host access
+    networks:
+      - supabase  # Connect to supabase network for service discovery
+    environment:
+      - HOST_AGENT_BEARER_TOKEN=${HOST_AGENT_BEARER_TOKEN}
+```
+
+**Host Service Communication:**
+- Uses `host.docker.internal:9000` to reach HostAgent
+- HostAgent must bind to `0.0.0.0:9000` (not `127.0.0.1`)
+- Required for n8n workflow backup functionality
+
+### Manual Build
+
+```bash
+# Build manually
+docker build -t ai-dev-server .
+docker run -p 127.0.0.1:8080:8080 \
+  --add-host host.docker.internal:host-gateway \
+  ai-dev-server
 ```
 
 ## Package Management
