@@ -12,7 +12,7 @@ Environment="PYTHONUNBUFFERED=1"
 Environment="PATH=/home/david/vps/host-agent/.venv/bin:/usr/local/bin:/usr/bin:/bin"
 
 # Use uv to run the application  
-ExecStart=/usr/local/bin/uv run python src/host_agent/main.py
+ExecStart=/home/david/.local/bin/uv run python src/host_agent/main.py
 ExecReload=/bin/kill -HUP $MAINPID
 
 # Restart configuration
