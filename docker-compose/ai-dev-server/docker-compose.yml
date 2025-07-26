@@ -5,6 +5,10 @@ services:
       - "127.0.0.1:8080:8080"
     environment:
       - PYTHONUNBUFFERED=1
+      - MCP_BEARER_TOKEN=${MCP_BEARER_TOKEN}
+      - N8N_BASE_URL=${N8N_BASE_URL}
+      - N8N_API_KEY=${N8N_API_KEY}
+      
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
