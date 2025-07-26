@@ -16,7 +16,6 @@ services:
       - HOST_AGENT_BEARER_TOKEN=${HOST_AGENT_BEARER_TOKEN}
     extra_hosts:
       - "host.docker.internal:host-gateway"
-      - "hostagent.local:153.92.4.240"
       
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
