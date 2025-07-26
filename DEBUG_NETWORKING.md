@@ -1,36 +1,31 @@
 # DEBUG NETWORKING ISSUE - RESOLVED
 
-## Problem Identified
-- ai-dev-server (Docker) could resolve `host.docker.internal` but HTTP requests hung
-- HostAgent backup endpoint works perfectly when accessed directly from host
-- Docker bridge networking was blocking container→host traffic on port 9000
+## Root Cause: UFW Firewall Blocking Container-to-Host Traffic
 
-## Solution Applied
-1. Added explicit IP mapping to docker-compose.yml:
-   ```yaml
-   extra_hosts:
-     - "host.docker.internal:host-gateway"
-     - "hostagent.local:153.92.4.240"
+### Problems Solved:
+1. **DNS Resolution**: Fixed by adding `/etc/hosts` mapping in container
+2. **Firewall Blocking**: UFW was blocking port 9000 access from Docker networks
+3. **Service Management**: HostAgent now running properly as systemd service
+
+### Final Solutions Applied:
+1. **UFW Rule**: Added firewall rule to allow port 9000
+   ```bash
+   sudo ufw allow 9000
    ```
 
-2. Updated ai-dev-server code to use `http://hostagent.local:9000` instead of `http://host.docker.internal:9000`
+2. **DNS Mapping**: Container has proper hostagent.local → 153.92.4.240 mapping
 
-## Test After Fix
-```bash
-cd /home/david/docker-compose/ai-dev-server
-docker-compose down
-docker-compose up -d
+3. **HostAgent Service**: Running as system service via systemd
+   ```bash
+   sudo systemctl status host-agent  # Check status
+   sudo journalctl -u host-agent -f  # View logs
+   ```
 
-# Wait for container to start, then test
-docker exec ai-dev-server curl -v http://hostagent.local:9000/health
+## Current Status:
+✅ **Networking**: Container can reach HostAgent on port 9000  
+✅ **HostAgent**: Service running and responding to health checks  
+❌ **Authentication**: MCP backup failing with "No valid session ID provided"  
 
-# Test the backup endpoint from container
-docker exec ai-dev-server curl -X POST http://hostagent.local:9000/backup/n8n \
-  -H "Authorization: Bearer $HOST_AGENT_BEARER_TOKEN" \
-  -H "Content-Type: application/json" \
-  -v
-```
-
-## Expected Result
-- Container should now successfully connect to HostAgent
-- n8n backup should complete successfully via MCP tool
+## Next Steps:
+- Investigate Bearer token authentication between ai-dev-server and HostAgent
+- Check if MCP connection is stable after container restarts
