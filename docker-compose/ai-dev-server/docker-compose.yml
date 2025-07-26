@@ -5,6 +5,8 @@ services:
       - "127.0.0.1:8080:8080"
     volumes:
         - /home/david/scripts:/scripts
+        - /var/run/docker.sock:/var/run/docker.sock
+        - /home/david/n8n-workflows-backup:/home/david/n8n-workflows-backup
     environment:
       - PYTHONUNBUFFERED=1
       - MCP_BEARER_TOKEN=${MCP_BEARER_TOKEN}

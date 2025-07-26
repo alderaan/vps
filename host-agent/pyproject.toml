@@ -1,0 +1,15 @@
+[project]
+name = "host-agent"
+version = "1.0.0"
+description = "Local host-level operations API for VPS management"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "fastapi>=0.116.1",
+    "pydantic-settings>=2.10.1",
+    "python-dotenv>=1.1.1",
+    "uvicorn>=0.35.0",
+]
+
+[project.scripts]
+host-agent = "host_agent.main:main"

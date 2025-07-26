@@ -4,7 +4,7 @@
 # This script exports workflows from N8N container and backs them up to git
 
 # Configuration
-BACKUP_DIR="$HOME/n8n-workflows-backup"
+BACKUP_DIR="/home/david/n8n-workflows-backup"
 EXPORT_PATH="/tmp/workflows"
 
 # Function to find N8N container name

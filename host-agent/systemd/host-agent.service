@@ -1,0 +1,39 @@
+[Unit]
+Description=HostAgent - Local Host Operations API
+After=network.target docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+User=david
+Group=david
+WorkingDirectory=/home/david/host-agent
+Environment="PYTHONUNBUFFERED=1"
+Environment="PATH=/home/david/host-agent/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+
+# Use uv to run the application
+ExecStart=/usr/local/bin/uv run python -m host_agent.main
+ExecReload=/bin/kill -HUP $MAINPID
+
+# Restart configuration
+Restart=always
+RestartSec=10
+
+# Resource limits
+MemoryLimit=512M
+CPUQuota=50%
+
+# Security settings
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=read-only
+ProtectSystem=strict
+ReadWritePaths=/home/david/host-agent /home/david/n8n-workflows-backup
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=host-agent
+
+[Install]
+WantedBy=multi-user.target

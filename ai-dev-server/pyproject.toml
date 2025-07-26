@@ -1,0 +1,11 @@
+[project]
+name = "ai-dev-server"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.10"
+dependencies = [
+    "fastmcp>=2.10.6",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "httpx>=0.24.0",
+]
