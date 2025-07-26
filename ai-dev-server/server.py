@@ -243,15 +243,18 @@ async def n8n_search_workflows(query: str) -> List[Dict]:
 @mcp.tool
 async def n8n_backup_workflows() -> Dict:
     """Run the n8n workflow backup via HostAgent API to backup all workflows to git."""
+    logger.info("Starting n8n backup via HostAgent")
     try:
         # Get HostAgent bearer token from environment
         host_agent_token = os.getenv("HOST_AGENT_BEARER_TOKEN")
         if not host_agent_token:
+            logger.error("HOST_AGENT_BEARER_TOKEN environment variable missing")
             return {
                 "success": False,
                 "error": "HOST_AGENT_BEARER_TOKEN environment variable is required"
             }
         
+        logger.info("Calling HostAgent backup endpoint...")
         # Call HostAgent backup endpoint
         async with httpx.AsyncClient() as client:
             response = await client.post(
@@ -264,6 +267,7 @@ async def n8n_backup_workflows() -> Dict:
             )
             
             if response.status_code == 200:
+                logger.info("HostAgent backup completed successfully")
                 result = response.json()
                 return {
                     "success": True,
@@ -273,6 +277,7 @@ async def n8n_backup_workflows() -> Dict:
                     "output": result.get("output")
                 }
             else:
+                logger.error(f"HostAgent backup failed with status {response.status_code}")
                 error_detail = response.text
                 return {
                     "success": False,
