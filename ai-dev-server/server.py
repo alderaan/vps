@@ -127,7 +127,7 @@ def _get_n8n_client() -> N8nClient:
 
 @mcp.tool
 async def n8n_list_workflows() -> List[Dict]:
-    """List all n8n workflows."""
+    """List all n8n workflows. Use this tool to search for workflows by filtering the results."""
     client = _get_n8n_client()
     workflows = await client.list_workflows()
     
@@ -238,24 +238,24 @@ async def n8n_deactivate_workflow(workflow_id: str) -> Dict:
     return await client.deactivate_workflow(workflow_id)
 
 
-@mcp.tool
-async def n8n_search_workflows(query: str) -> List[Dict]:
-    """Search n8n workflows by name or description."""
-    client = _get_n8n_client()
-    workflows = await client.list_workflows()
-    
-    # Simple text search in name and description
-    query_lower = query.lower()
-    matches = []
-    
-    for workflow in workflows:
-        name = workflow.get("name", "").lower()
-        description = workflow.get("description", "").lower()
-        
-        if query_lower in name or query_lower in description:
-            matches.append(workflow)
-    
-    return matches
+# @mcp.tool
+# async def n8n_search_workflows(query: str) -> List[Dict]:
+#     """Search n8n workflows by name or description."""
+#     client = _get_n8n_client()
+#     workflows = await client.list_workflows()
+#     
+#     # Simple text search in name and description
+#     query_lower = query.lower()
+#     matches = []
+#     
+#     for workflow in workflows:
+#         name = workflow.get("name", "").lower()
+#         description = workflow.get("description", "").lower()
+#         
+#         if query_lower in name or query_lower in description:
+#             matches.append(workflow)
+#     
+#     return matches
 
 
 async def _run_n8n_backup() -> Dict:
