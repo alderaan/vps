@@ -47,41 +47,33 @@ curl -s http://127.0.0.1:8080/docs  # OpenAPI docs
 claude mcp add --transport http hello-world-server http://127.0.0.1:8080/llm/mcp
 ```
 
-**For Claude Desktop (OAuth 2.1 with Dynamic Client Registration):**
+**For Claude Desktop (OAuth 2.1):**
 - **URL**: `https://ai-dev.correlion.ai/llm/mcp/`
-- **No manual client configuration required** - Claude Desktop automatically registers itself
+- **Client ID**: `claude-desktop-client`
+- **Client Secret**: Set in your `.env` file as `OAUTH_CLIENT_SECRET`
 
-### OAuth 2.1 + DCR Implementation
+### OAuth 2.1 Implementation
 
-This server implements **Dynamic Client Registration (DCR)** as required by Claude Desktop, with a simplified single-user approach that maintains stateless operation.
+This server implements a **simplified OAuth 2.1 flow** specifically for Claude Desktop and similar cloud clients that require OAuth authentication instead of direct bearer tokens.
 
 **Key Features:**
-- **Dynamic Client Registration** - Claude Desktop automatically registers and gets credentials
-- **Stateless operation** - No database required, uses in-memory storage
+- **Static client credentials** - Uses fixed client ID and configurable secret
 - **Auto-approval flow** - No user consent screen (single-user setup)
 - **Bearer token passthrough** - OAuth flow returns your existing `MCP_BEARER_TOKEN`
-- **Backward compatibility** - Still supports static client credentials for testing
+- **Security** - Only clients with correct `client_id` and `client_secret` can authenticate
 
 **OAuth Endpoints:**
 - `/.well-known/oauth-authorization-server` - Metadata discovery
-- `/oauth/register` - Dynamic Client Registration (DCR) endpoint
-- `/oauth/authorize` - Authorization endpoint (validates dynamic client_id)
-- `/oauth/token` - Token endpoint (validates dynamic client_secret)
+- `/oauth/authorize` - Authorization endpoint (validates client_id)
+- `/oauth/token` - Token endpoint (validates client_secret)
 
 **Environment Variables:**
 ```bash
-MCP_BEARER_TOKEN=your-mcp-token        # Used for direct API access and returned by OAuth flow
-OAUTH_CLIENT_SECRET=your-oauth-secret  # Optional: Used for static client authentication (testing)
+MCP_BEARER_TOKEN=your-mcp-token        # Used for direct API access
+OAUTH_CLIENT_SECRET=your-oauth-secret  # Used for OAuth client authentication
 ```
 
-**How it works:**
-1. Claude Desktop discovers OAuth endpoints via metadata
-2. Claude Desktop registers itself dynamically and gets temporary credentials
-3. Claude Desktop uses those credentials in standard OAuth flow
-4. Server validates and returns your `MCP_BEARER_TOKEN`
-5. All subsequent MCP requests use the bearer token
-
-**Note:** This implements minimal DCR compliance for Claude Desktop. Dynamic clients are stored in memory and reset on server restart.
+**Note:** This is a minimal OAuth implementation for single-user scenarios. For production multi-user setups, consider a full OAuth provider like Auth0.
 
 ### Manual Testing via cURL
 
