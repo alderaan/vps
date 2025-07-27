@@ -3,9 +3,9 @@
 Combined FastAPI + FastMCP server for development and testing.
 """
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastmcp import FastMCP
 import uvicorn
 import asyncio
@@ -13,6 +13,8 @@ import logging
 import os
 import httpx
 import subprocess
+import secrets
+import time
 from typing import Dict, List, Optional, Any
 
 # Configure logging
@@ -24,6 +26,10 @@ BEARER_TOKEN = os.getenv("MCP_BEARER_TOKEN")
 if not BEARER_TOKEN:
     logger.error("MCP_BEARER_TOKEN environment variable is required")
     raise ValueError("MCP_BEARER_TOKEN environment variable must be set")
+
+# OAuth client credentials for Claude Desktop
+OAUTH_CLIENT_ID = "claude-desktop-client"
+OAUTH_CLIENT_SECRET = os.getenv("OAUTH_CLIENT_SECRET", "your-secret-here-change-this")
 
 # n8n configuration
 N8N_BASE_URL = os.getenv("N8N_BASE_URL", "http://localhost:5678")
@@ -406,6 +412,83 @@ async def authenticate(credentials: dict):
         }
     else:
         raise HTTPException(status_code=401, detail="Invalid credentials")
+
+
+# OAuth 2.1 endpoints for Claude Desktop compatibility
+@app.get("/.well-known/oauth-authorization-server")
+async def oauth_metadata():
+    """OAuth metadata discovery endpoint for Claude Desktop."""
+    base_url = os.getenv("BASE_URL", "https://ai-dev.correlion.ai")
+    return {
+        "issuer": base_url,
+        "authorization_endpoint": f"{base_url}/oauth/authorize",
+        "token_endpoint": f"{base_url}/oauth/token",
+        "code_challenge_methods_supported": ["S256"],
+        "grant_types_supported": ["authorization_code"],
+        "response_types_supported": ["code"],
+        "scopes_supported": ["mcp"]
+    }
+
+
+@app.get("/oauth/authorize")
+async def oauth_authorize(
+    client_id: str,
+    redirect_uri: str,
+    code_challenge: str,
+    code_challenge_method: str = "S256",
+    scope: str = "mcp",
+    state: Optional[str] = None
+):
+    """OAuth authorization endpoint - validates client_id."""
+    logger.info(f"OAuth authorize request from client_id: {client_id}")
+    
+    # Validate client_id
+    if client_id != OAUTH_CLIENT_ID:
+        logger.warning(f"Invalid client_id: {client_id}")
+        raise HTTPException(status_code=400, detail="Invalid client_id")
+    
+    # Generate a fake authorization code
+    auth_code = f"fake_code_{secrets.token_urlsafe(16)}"
+    
+    # Build redirect URL with authorization code
+    redirect_params = f"code={auth_code}"
+    if state:
+        redirect_params += f"&state={state}"
+    
+    redirect_url = f"{redirect_uri}?{redirect_params}"
+    logger.info(f"Redirecting to: {redirect_url}")
+    
+    return RedirectResponse(url=redirect_url)
+
+
+@app.post("/oauth/token")
+async def oauth_token(
+    code: str = Form(...),
+    code_verifier: str = Form(...),
+    client_id: str = Form(...),
+    redirect_uri: str = Form(...),
+    grant_type: str = Form(default="authorization_code"),
+    client_secret: str = Form(...)
+):
+    """OAuth token endpoint - validates client credentials before returning token."""
+    logger.info(f"OAuth token request with code: {code}")
+    
+    # Validate client credentials
+    if client_id != OAUTH_CLIENT_ID:
+        logger.warning(f"Invalid client_id: {client_id}")
+        raise HTTPException(status_code=401, detail="Invalid client_id")
+    
+    if client_secret != OAUTH_CLIENT_SECRET:
+        logger.warning(f"Invalid client_secret for client_id: {client_id}")
+        raise HTTPException(status_code=401, detail="Invalid client_secret")
+    
+    # Return the existing bearer token only if credentials are valid
+    return {
+        "access_token": BEARER_TOKEN,
+        "token_type": "bearer",
+        "expires_in": 3600,
+        "scope": "mcp"
+    }
 
 
 # Mount FastMCP exactly as per documentation
