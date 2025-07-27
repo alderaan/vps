@@ -153,63 +153,26 @@ async def n8n_get_workflow(workflow_id: str) -> Dict:
 
 
 @mcp.tool
-async def n8n_create_workflow(name: str, nodes: List[Dict], connections: Dict, settings: Optional[Dict] = None) -> Dict:
-    """Create new n8n workflow.
+async def n8n_create_workflow_json(name: str, nodes_json: str, connections_json: str, settings_json: Optional[str] = None) -> Dict:
+    """Create new n8n workflow using JSON strings.
     
     Args:
         name: Workflow name
-        nodes: List of workflow nodes
-        connections: Node connections configuration
-        settings: Optional workflow settings
+        nodes_json: List of workflow nodes as JSON string
+        connections_json: Node connections configuration as JSON string
+        settings_json: Optional workflow settings as JSON string
     """
+    import json
+    
     client = _get_n8n_client()
     workflow_data = {
         "name": name,
-        "nodes": nodes,
-        "connections": connections,
-        "settings": settings or {}
+        "nodes": json.loads(nodes_json),
+        "connections": json.loads(connections_json),
+        "settings": json.loads(settings_json) if settings_json else {}
     }
     return await client.create_workflow(workflow_data)
 
-
-@mcp.tool
-async def n8n_update_workflow(workflow_id: str, name: Optional[str] = None, nodes: Optional[List[Dict]] = None, 
-                             connections: Optional[Dict] = None, settings: Optional[Dict] = None) -> Dict:
-    """Update existing n8n workflow.
-    
-    Args:
-        workflow_id: ID of workflow to update
-        name: New workflow name (optional)
-        nodes: New nodes list (optional)
-        connections: New connections (optional)
-        settings: New settings (optional)
-    """
-    # First, run backup before making any changes
-    logger.info(f"Running backup before updating workflow {workflow_id}")
-    backup_result = await n8n_backup_workflows()
-    
-    client = _get_n8n_client()
-    
-    # Get current workflow to merge updates
-    current = await client.get_workflow(workflow_id)
-    
-    workflow_data = {
-        "name": name or current.get("name"),
-        "nodes": nodes or current.get("nodes", []),
-        "connections": connections or current.get("connections", {}),
-        "settings": settings or current.get("settings", {})
-    }
-    
-    # Update the workflow
-    logger.info(f"Updating workflow {workflow_id}")
-    update_result = await client.update_workflow(workflow_id, workflow_data)
-    
-    # Return combined result with both backup and update status
-    return {
-        "backup_status": backup_result,
-        "update_result": update_result,
-        "message": f"Backup completed ({'successfully' if backup_result.get('success') else 'with errors'}), workflow updated successfully"
-    }
 
 
 @mcp.tool
