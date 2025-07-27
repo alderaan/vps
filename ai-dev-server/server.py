@@ -191,7 +191,7 @@ async def n8n_update_workflow_json(workflow_id: str, name: Optional[str] = None,
     
     # First, run backup before making any changes
     logger.info(f"Running backup before updating workflow {workflow_id}")
-    backup_result = await n8n_backup_workflows()
+    backup_result = await _run_n8n_backup()
     
     client = _get_n8n_client()
     
@@ -258,9 +258,8 @@ async def n8n_search_workflows(query: str) -> List[Dict]:
     return matches
 
 
-@mcp.tool
-async def n8n_backup_workflows() -> Dict:
-    """Run the n8n workflow backup via HostAgent API to backup all workflows to git."""
+async def _run_n8n_backup() -> Dict:
+    """Internal function to run n8n backup via HostAgent API."""
     logger.info("Starting n8n backup via HostAgent")
     try:
         # Get HostAgent bearer token from environment
@@ -317,6 +316,12 @@ async def n8n_backup_workflows() -> Dict:
             "success": False,
             "error": f"Unexpected error calling HostAgent: {str(e)}"
         }
+
+
+@mcp.tool
+async def n8n_backup_workflows() -> Dict:
+    """Run the n8n workflow backup via HostAgent API to backup all workflows to git."""
+    return await _run_n8n_backup()
 
 
 # Create the MCP's ASGI app (following FastMCP docs exactly)
