@@ -1,145 +1,162 @@
-# FastMCP + FastAPI Server
+# AI Dev Server
 
-Combined FastAPI + FastMCP server providing both web API endpoints and MCP (Model Context Protocol) functionality in a single deployment.
+Combined FastAPI + FastMCP server providing AI integrations and n8n workflow management capabilities.
+
+## Overview
+
+This server integrates FastAPI and FastMCP to provide:
+- Web API endpoints for health checks and service information
+- MCP (Model Context Protocol) tools for AI agent integrations
+- n8n workflow management capabilities
+- Secure authentication via Bearer tokens
 
 ## Tech Stack
 
-- **FastMCP 2.10.6** - MCP protocol 1.12.0 implementation
-- **FastAPI** - Web framework with OpenAPI docs
-- **Python 3.11+** - Managed by uv package manager
-- **Streamable HTTP Transport** - March 2025 MCP standard
+- **Python 3.11+** - Runtime environment
+- **FastMCP 2.10.6+** - MCP protocol implementation
+- **FastAPI 0.115.0+** - Web framework with OpenAPI docs
+- **uvicorn** - ASGI server
+- **httpx** - Async HTTP client for API calls
+- **uv** - Fast Python package manager
+
+## API Endpoints
+
+### FastAPI Endpoints
+
+- `GET /` - Service information
+- `GET /health` - Health check for load balancers
+- `GET /ready` - Readiness check
+- `POST /auth` - Development authentication endpoint
+- `GET /docs` - OpenAPI documentation
+
+### MCP Endpoint
+
+- `/llm/mcp/` - MCP protocol endpoint (requires authentication)
+
+## MCP Tools
+
+The server provides the following MCP tools:
+
+### Basic Tools
+- `hello_world` - Returns a simple greeting
+- `echo` - Echoes back the provided message
+- `get_status` - Returns server status information
+
+### n8n Workflow Management Tools
+- `n8n_list_workflows` - List all n8n workflows
+- `n8n_get_workflow` - Get specific workflow by ID
+- `n8n_create_workflow_json` - Create new workflow using JSON
+- `n8n_update_workflow_json` - Update existing workflow using JSON
+- `n8n_delete_workflow` - Delete workflow by ID
+- `n8n_activate_workflow` - Activate workflow for execution
+- `n8n_deactivate_workflow` - Deactivate workflow
+- `n8n_backup_workflows` - Backup workflows to git via HostAgent
+
+## Environment Variables
+
+Required environment variables:
+
+```bash
+# Authentication
+MCP_BEARER_TOKEN=your-secure-token        # Required for MCP authentication
+
+# n8n Configuration
+N8N_BASE_URL=http://n8n:5678             # n8n API endpoint (default: http://localhost:5678)
+N8N_API_KEY=your-n8n-api-key            # n8n API key for authentication
+
+# HostAgent Integration
+HOST_AGENT_BEARER_TOKEN=your-token       # Bearer token for HostAgent API calls
+```
 
 ## Quick Start
 
+### Local Development
+
 ```bash
-# Start server (background)
+# Install dependencies
+uv sync
+
+# Set environment variables
+export MCP_BEARER_TOKEN="your-secure-token"
+export N8N_BASE_URL="http://localhost:5678"
+export N8N_API_KEY="your-n8n-api-key"
+export HOST_AGENT_BEARER_TOKEN="your-host-agent-token"
+
+# Run server
+uv run server.py
+
+# Or run in background
 nohup uv run server.py > server.log 2>&1 & echo $!
 
 # Kill server
 pkill -f server.py
 
 # Test endpoints
-curl -s http://127.0.0.1:8080/health
-curl -s http://127.0.0.1:8080/docs  # OpenAPI docs
+curl http://127.0.0.1:8080/health
+curl http://127.0.0.1:8080/docs
 ```
 
-## API Endpoints
-
-**FastAPI Endpoints:**
-- `/health` - Health check
-- `/ready` - Readiness check  
-- `/` - Service info
-- `/auth` - Dev authentication
-- `/docs` - OpenAPI documentation
-
-**MCP Endpoint:** `/llm/mcp/`
-- 3 tools: `hello_world`, `echo`, `get_status`
-- Requires proper session management
-- Uses JSON-RPC 2.0 protocol
-
-## MCP Usage
-
-### Adding to Claude Code
+### Docker Deployment
 
 ```bash
-# Add server to Claude Code's MCP configuration
-claude mcp add --transport http hello-world-server http://127.0.0.1:8080/llm/mcp
+# Build image
+docker build -t ai-dev-server .
+
+# Run container
+docker run -d \
+  --name ai-dev-server \
+  -p 127.0.0.1:8080:8080 \
+  -e MCP_BEARER_TOKEN="your-token" \
+  -e N8N_BASE_URL="http://n8n:5678" \
+  -e N8N_API_KEY="your-n8n-api-key" \
+  -e HOST_AGENT_BEARER_TOKEN="your-host-agent-token" \
+  --add-host host.docker.internal:host-gateway \
+  ai-dev-server
 ```
 
-### Manual Testing via cURL
+## Production Deployment
 
-```bash
-# 1. Initialize session  
-curl -X POST http://127.0.0.1:8080/llm/mcp/ \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0.0"}}}'
+### Docker Compose
 
-# 2. Send initialized notification (extract session ID from response)
-curl -X POST http://127.0.0.1:8080/llm/mcp/ \
-  -H "mcp-session-id: SESSION_ID" \
-  -d '{"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}}'
+The server is deployed via Docker Compose with the following configuration:
 
-# 3. List tools
-curl -X POST http://127.0.0.1:8080/llm/mcp/ \
-  -H "mcp-session-id: SESSION_ID" \
-  -d '{"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}'
-
-# 4. Call tool
-curl -X POST http://127.0.0.1:8080/llm/mcp/ \
-  -H "mcp-session-id: SESSION_ID" \
-  -d '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "hello_world", "arguments": {}}}'
+```yaml
+services:
+  ai-dev-server:
+    image: registry.correlion.ai/ai-dev-server:latest
+    container_name: ai-dev-server
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - /home/david/scripts:/scripts
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/david/n8n-workflows-backup:/home/david/n8n-workflows-backup
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MCP_BEARER_TOKEN=${MCP_BEARER_TOKEN}
+      - N8N_BASE_URL=${N8N_BASE_URL}
+      - N8N_API_KEY=${N8N_API_KEY}
+      - HOST_AGENT_BEARER_TOKEN=${HOST_AGENT_BEARER_TOKEN}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - supabase
 ```
 
-## Critical Implementation Notes
+### Caddy Reverse Proxy
 
-### FastAPI + FastMCP Integration Key Learnings
+The server is secured behind Caddy with the following configuration:
 
-**1. Lifespan Management is Critical**
-- Must pass `lifespan=mcp_app.lifespan` to FastAPI constructor
-- Without this, MCP session management fails completely
-
-**2. 307 Redirect Prevention**
-- FastAPI's default `redirect_slashes=True` breaks MCP endpoints
-- Always use `redirect_slashes=False` in FastAPI constructor
-- Prevents `/llm/mcp` → `/llm/mcp/` redirect loops
-
-**3. Correct Endpoint Path Structure**
-- When mounting MCP app at `/llm`, the actual MCP endpoint is `/llm/mcp/`
-- The trailing slash is required for streamable HTTP transport
-- Mount path + `/mcp/` = actual MCP endpoint
-
-**4. Required HTTP Headers for MCP**
-- MCP streamable HTTP requires: `Accept: application/json, text/event-stream`
-- Without both content types, requests return 406 Not Acceptable
-- `Content-Type: application/json` also required
-
-**5. Working FastAPI + FastMCP Pattern**
-```python
-mcp = FastMCP("Server Name")
-mcp_app = mcp.http_app()
-app = FastAPI(lifespan=mcp_app.lifespan, redirect_slashes=False)
-app.mount("/llm", mcp_app)
-# MCP endpoint: /llm/mcp/
-```
-
-**6. MCP Transport Methods**
-- MCP supports 3 official transports: STDIO (local), SSE (deprecated), and Streamable HTTP (current standard)
-- We use Streamable HTTP via `mcp.http_app()` which is the March 2025 best practice for remote servers
-
-Streamable HTTP allows remote network access with session management, bidirectional communication (server can stream responses via SSE), JSON-RPC 2.0 protocol messaging, and stateful context preservation across requests. Unlike regular HTTP, it maintains persistent sessions with unique IDs and supports both immediate responses and streaming for long-running operations, making it ideal for AI agent integrations that need reliable context and real-time communication.
-
-## Production Deployment with Authentication
-
-### Setting up Caddy Reverse Proxy with Basic Auth
-
-The server can be secured behind Caddy with HTTP Basic Authentication.
-
-**1. Generate password hash:**
-```bash
-AI_DEV_SERVER_PASSWORD_HASH=$(caddy hash-password --plaintext your_password)
-echo $AI_DEV_SERVER_PASSWORD_HASH
-```
-
-**2. Configure systemd environment:**
-```bash
-sudo systemctl edit caddy
-```
-
-Add the following content:
-```ini
-[Service]
-Environment="AI_DEV_SERVER_PASSWORD_HASH=your_hash_from_step_1"
-```
-
-**3. Add to Caddyfile:**
 ```caddyfile
-ai-dev.your-domain.com {
+ai-dev.correlion.ai {
     encode gzip zstd
-    
-    basic_auth /llm/* {
-        admin {env.AI_DEV_SERVER_PASSWORD_HASH}
-    }
     
     reverse_proxy localhost:8080
     
@@ -153,68 +170,120 @@ ai-dev.your-domain.com {
 }
 ```
 
-**4. Restart services:**
-```bash
-sudo systemctl daemon-reload
-sudo systemctl restart caddy
-```
+## Authentication
 
-**5. Access with authentication:**
-- URL: `https://ai-dev.your-domain.com/llm/mcp/`
-- Add `Authorization: Basic base64(admin:your_password)` header to all MCP requests
+The server uses Bearer token authentication for MCP endpoints:
 
-## Docker Deployment
+1. All requests to `/llm/*` paths require an `Authorization` header
+2. Accepted formats:
+   - `Authorization: Bearer <token>` - Direct bearer token
+   - `Authorization: Basic <credentials>` - Basic auth passthrough from Caddy
 
-### Standard Deployment
+### Adding to Claude Code
 
 ```bash
-# Deploy via VPS deployment script
-cd /home/david/vps
-./deploy.sh
-
-# Or manually with Docker Compose
-cd docker-compose/ai-dev-server
-docker-compose up -d
-
-# Health check
-curl http://localhost:8080/health
+# With bearer token
+claude mcp add --transport http ai-dev-server https://ai-dev.correlion.ai/llm/mcp/ \
+  --header "Authorization: Bearer $MCP_BEARER_TOKEN"
 ```
 
-### Docker Networking Requirements
+## MCP Protocol Details
 
-The ai-dev-server container needs to communicate with host services (HostAgent):
+### Session Management
 
-```yaml
-# docker-compose/ai-dev-server/docker-compose.yml
-services:
-  ai-dev-server:
-    container_name: ai-dev-server
-    extra_hosts:
-      - "host.docker.internal:host-gateway"  # Enable host access
-    networks:
-      - supabase  # Connect to supabase network for service discovery
-    environment:
-      - HOST_AGENT_BEARER_TOKEN=${HOST_AGENT_BEARER_TOKEN}
+The server uses MCP's streamable HTTP transport which requires:
+1. Initial session creation via `initialize` method
+2. Session ID returned in response headers
+3. Subsequent requests must include `mcp-session-id` header
+
+### Required Headers
+
+- `Content-Type: application/json`
+- `Accept: application/json, text/event-stream`
+- `Authorization: Bearer <token>`
+- `mcp-session-id: <session-id>` (after initialization)
+
+### Manual Testing
+
+```bash
+# 1. Initialize session
+curl -X POST https://ai-dev.correlion.ai/llm/mcp/ \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Authorization: Bearer $MCP_BEARER_TOKEN" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0.0"}}}'
+
+# 2. List tools (use session ID from step 1)
+curl -X POST https://ai-dev.correlion.ai/llm/mcp/ \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $MCP_BEARER_TOKEN" \
+  -H "mcp-session-id: <session-id>" \
+  -d '{"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}'
 ```
 
-**Host Service Communication:**
+## Docker Networking
+
+### Host Service Communication
+
+The container needs to communicate with the HostAgent service running on the host:
+
 - Uses `host.docker.internal:9000` to reach HostAgent
-- HostAgent must bind to `0.0.0.0:9000` (not `127.0.0.1`)
-- Required for n8n workflow backup functionality
+- Requires `extra_hosts: ["host.docker.internal:host-gateway"]` in Docker
+- HostAgent must bind to `0.0.0.0:9000` to accept container connections
 
-### Manual Build
+### Network Configuration
+
+- Joins the `supabase_default` network for service discovery
+- Can communicate with n8n container using hostname `n8n`
+- Binds to localhost only (`127.0.0.1:8080`) for security
+
+## Troubleshooting
+
+### Common Issues
+
+**Connection to HostAgent fails**
+- Verify HostAgent is running: `sudo systemctl status host-agent`
+- Check HostAgent is binding to `0.0.0.0:9000`
+- Ensure `HOST_AGENT_BEARER_TOKEN` is set correctly
+
+**n8n API errors**
+- Verify n8n container is running: `docker ps | grep n8n`
+- Check `N8N_API_KEY` is correct
+- Ensure container can reach n8n at `http://n8n:5678`
+
+**Authentication failures**
+- Verify `MCP_BEARER_TOKEN` environment variable is set
+- Check Authorization header format is correct
+- Ensure token matches in request and server environment
+
+### Logs
 
 ```bash
-# Build manually
-docker build -t ai-dev-server .
-docker run -p 127.0.0.1:8080:8080 \
-  --add-host host.docker.internal:host-gateway \
-  ai-dev-server
+# View container logs
+docker logs -f ai-dev-server
+
+# View local server logs
+tail -f server.log
 ```
 
-## Package Management
+## Development
 
-Uses `uv` package manager:
-- Dependencies: `pyproject.toml`
-- Lock file: `uv.lock`
-- Virtual environment: `.venv/`
+### Adding New MCP Tools
+
+1. Define tool function with `@mcp.tool` decorator in server.py:224
+2. Add proper type hints and docstring
+3. Return JSON-serializable data
+4. Test with Claude Code or manual API calls
+
+### Building Docker Image
+
+```bash
+# Build locally
+docker build -t ai-dev-server .
+
+# Tag for registry
+docker tag ai-dev-server registry.correlion.ai/ai-dev-server:latest
+
+# Push to registry
+docker push registry.correlion.ai/ai-dev-server:latest
+```

@@ -1,21 +1,21 @@
 # VPS Infrastructure
 
-Modern, secure VPS infrastructure with containerized services, automated deployment, and AI integration capabilities.
+Modern, secure VPS infrastructure with containerized services and AI integration capabilities.
 
 ## Architecture Overview
 
-This VPS setup provides a complete development and production environment with the following services:
+This VPS setup provides a development and production environment with the following services:
 
 ### Core Services
 
-- **🤖 AI Dev Server** - FastMCP + FastAPI server for AI integrations and n8n workflow management
-- **⚡ HostAgent** - Secure local API for privileged host operations (backups, system tasks)
-- **🔄 n8n** - Workflow automation platform with AI capabilities
-- **🗃️ Supabase** - Complete backend with PostgreSQL, Auth, Storage, and Edge Functions
-- **🌐 Browserless** - Headless Chrome service for web automation
-- **📊 DBT** - Data transformation and analytics
-- **📦 Container Registry** - Private Docker registry for custom images
-- **🚀 DTC App** - Custom frontend application
+- **AI Dev Server** - FastMCP + FastAPI server for AI integrations and n8n workflow management
+- **HostAgent** - Secure local API for privileged host operations (backups, system tasks)
+- **n8n** - Workflow automation platform with AI capabilities
+- **Supabase** - Complete backend with PostgreSQL, Auth, Storage, and Edge Functions
+- **Browserless** - Headless Chrome service for web automation
+- **DBT** - Data transformation and analytics
+- **Container Registry** - Private Docker registry for custom images
+- **DTC App** - Custom frontend application
 
 ### Service Communication
 
@@ -71,7 +71,7 @@ services:
 
 ```bash
 # host-agent/.env
-HOST=0.0.0.0  # Allow container access (secure: localhost binding in systemd)
+HOST=0.0.0.0  # Allow container access
 PORT=9000
 ```
 
@@ -109,8 +109,12 @@ cd /home/david/vps
 cp host-agent/.env.example host-agent/.env
 # Edit .env files with your configuration
 
-# Deploy all services
+# Deploy HostAgent service (primary deployment method)
 ./deploy.sh
+
+# Deploy individual Docker services
+cd docker-compose/[service-name]
+docker-compose up -d
 
 # Verify deployment
 docker ps
@@ -119,27 +123,30 @@ sudo systemctl status host-agent
 
 ### Service Access
 
-- **Supabase Studio**: https://yourdomain.com:3000
-- **n8n**: https://yourdomain.com:5678
-- **AI Dev Server**: https://ai-dev.yourdomain.com/llm/mcp/
-- **Container Registry**: https://registry.yourdomain.com
+- **Supabase API**: https://supabase.correlion.ai
+- **Supabase Studio**: http://localhost:3000 (SSH tunnel required)
+- **n8n**: https://n8n.correlion.ai
+- **AI Dev Server**: https://ai-dev.correlion.ai/llm/mcp/
+- **Container Registry**: https://registry.correlion.ai
+- **DTC App**: https://dtc.correlion.ai
+- **Airflow**: https://airflow.correlion.ai
 
 ## Service Management
 
 ### Starting/Stopping Services
 
 ```bash
-# Individual services
-cd docker-compose/servicename
+# Individual Docker services
+cd docker-compose/[service-name]
 docker-compose up -d
 docker-compose down
-
-# All services (via deploy script)
-./deploy.sh
 
 # HostAgent (systemd service)
 sudo systemctl start/stop/restart host-agent
 sudo journalctl -u host-agent -f
+
+# Deploy script (for HostAgent updates)
+./deploy.sh
 ```
 
 ### Container Names
@@ -159,11 +166,11 @@ All services use clean, predictable container names:
 # Service health endpoints
 curl http://127.0.0.1:8080/health    # AI Dev Server
 curl http://127.0.0.1:9000/health    # HostAgent
-curl http://127.0.0.1:3000/api/platform/profile  # Supabase
+curl http://127.0.0.1:3000/api/platform/profile  # Supabase Studio
 
 # Container status
 docker ps
-docker logs -f container-name
+docker logs -f [container-name]
 ```
 
 ## Environment Configuration
@@ -180,11 +187,12 @@ HOST_AGENT_BEARER_TOKEN=your-secure-token
 # n8n Configuration  
 N8N_BASE_URL=http://n8n:5678
 N8N_API_KEY=your-n8n-api-key
-N8N_ENCRYPTION_KEY=your-encryption-key
 
 # Database (Supabase)
 POSTGRES_PASSWORD=your-db-password
 JWT_SECRET=your-jwt-secret
+ANON_KEY=your-anon-key
+SERVICE_ROLE_KEY=your-service-role-key
 ```
 
 ### Security Best Practices
@@ -199,7 +207,7 @@ JWT_SECRET=your-jwt-secret
 
 ### Automated Backups
 
-- **n8n Workflows**: Automated backup to Git repository via HostAgent
+- **n8n Workflows**: Automated backup via `backup-n8n-workflows.sh` script or HostAgent API
 - **Database**: Supabase handles automatic backups
 - **Container Registry**: Images stored with versioning
 - **Configuration**: All configuration in Git (except secrets)
@@ -207,11 +215,14 @@ JWT_SECRET=your-jwt-secret
 ### Manual Backup Commands
 
 ```bash
-# n8n workflows backup
+# n8n workflows backup (via script)
+./backup-n8n-workflows.sh
+
+# n8n workflows backup (via HostAgent API)
 curl -X POST http://127.0.0.1:9000/backup/n8n \
   -H "Authorization: Bearer $HOST_AGENT_BEARER_TOKEN"
 
-# Database backup (manual)
+# Database backup
 docker exec supabase-db pg_dump -U postgres database_name > backup.sql
 
 # Full system state
@@ -235,6 +246,7 @@ Each service has its own development setup. See individual service READMEs:
 2. Add `docker-compose.yml` with proper networking
 3. Update this README with service description
 4. Add to deployment scripts if needed
+5. Configure Caddy reverse proxy if external access needed
 
 ### Testing
 
@@ -244,7 +256,7 @@ docker exec ai-dev-server curl http://host.docker.internal:9000/health
 docker exec ai-dev-server curl http://n8n:5678/healthz
 
 # Test external access
-curl https://yourdomain.com/health
+curl https://[domain].correlion.ai/health
 ```
 
 ## Troubleshooting
@@ -280,15 +292,15 @@ df -h
 free -m
 
 # Network connectivity
-docker exec container-name ping other-container
-docker exec container-name nslookup service-name
+docker exec [container-name] ping [other-container]
+docker exec [container-name] nslookup [service-name]
 ```
 
 ## Contributing
 
 1. Follow service-specific development guides
 2. Update READMEs for any networking changes
-3. Test deployment with `./deploy.sh`
+3. Test deployment with appropriate scripts
 4. Verify all services communicate correctly
 5. Update environment variable documentation
 

@@ -1,16 +1,18 @@
 # HostAgent
 
-A modern, secure FastAPI service for local host-level operations on VPS infrastructure. Designed to run locally on the VPS and provide authenticated HTTP endpoints for privileged tasks like backing up N8N workflows.
+A secure FastAPI service for local host-level operations on VPS infrastructure. Runs locally on the VPS and provides authenticated HTTP endpoints for privileged tasks like backing up n8n workflows.
+
+## Overview
+
+HostAgent provides a secure API interface for Docker containers to request host-level operations. Currently supports n8n workflow backups to git repositories.
 
 ## Features
 
-- **Secure**: Bearer token authentication, localhost-only binding
-- **Modern**: Built with FastAPI, uv, and Pydantic settings
-- **Clean**: Proper Python package structure with type hints
-- **Robust**: Comprehensive error handling and logging
-- **Observable**: Health check endpoint for monitoring
-- **Configurable**: Environment-based configuration
-- **Extensible**: Easy to add new host operations
+- **Secure Authentication**: Bearer token authentication for all operations
+- **Docker Integration**: Accessible from Docker containers via host.docker.internal
+- **Modern Stack**: Built with FastAPI, Pydantic, and uv package manager
+- **Systemd Service**: Runs as a managed service with security restrictions
+- **Health Monitoring**: Health check endpoint for service monitoring
 
 ## Project Structure
 
@@ -20,129 +22,12 @@ host-agent/
 │   ├── __init__.py
 │   ├── main.py          # FastAPI app with auth & endpoints
 │   ├── config.py        # Pydantic settings management 
-│   └── backup.py        # Calls existing backup scripts
+│   └── backup.py        # Backup script execution
 ├── systemd/
-│   └── host-agent.service  # Modern systemd service
+│   └── host-agent.service  # Systemd service configuration
 ├── .env.example         # Configuration template
-└── pyproject.toml       # uv dependency management
-```
-
-## Prerequisites
-
-- Python 3.9+
-- [uv](https://github.com/astral-sh/uv) package manager
-- Docker (for N8N container operations)
-- Git (for backup operations)
-- Existing `backup-n8n-workflows.sh` script
-
-## Local Development
-
-1. **Setup:**
-   ```bash
-   cd vps/host-agent
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   uv sync
-   ```
-
-3. **Run locally:**
-   ```bash
-   uv run python src/host_agent/main.py
-   ```
-
-4. **Test endpoints:**
-   ```bash
-   # Health check
-   curl http://127.0.0.1:9000/health
-   
-   # Backup (requires Bearer token)
-   curl -X POST http://127.0.0.1:9000/backup/n8n \
-     -H "Authorization: Bearer YOUR_TOKEN"
-   
-   # Interactive API docs
-   open http://127.0.0.1:9000/docs
-   ```
-
-## VPS Deployment
-
-### Quick Deploy (Recommended)
-
-After initial setup, use the deploy script for easy updates:
-
-```bash
-cd /home/david/vps
-./deploy.sh
-```
-
-### Initial Setup
-
-#### 1. Clone Project to VPS
-
-```bash
-# On VPS - one time setup
-cd /home/david
-git clone git@github.com:yourusername/vps.git
-```
-
-#### 2. Configure Environment
-
-```bash
-# On VPS
-cd /home/david/vps/host-agent
-cp .env.example .env
-nano .env  # Add your real configuration
-```
-
-**Required .env variables:**
-```bash
-BEARER_TOKEN=your_secure_random_token_here
-HOST=127.0.0.1
-PORT=9000
-BACKUP_SCRIPT_PATH=/home/david/vps/backup-n8n-workflows.sh
-```
-
-#### 3. Install Dependencies
-
-```bash
-# Ensure uv is installed
-curl -LsSf https://astral.sh/uv/install.sh | sh
-source ~/.bashrc
-
-# Install dependencies
-uv sync
-```
-
-#### 4. Setup Systemd Service
-
-```bash
-# Copy service file
-sudo cp systemd/host-agent.service /etc/systemd/system/
-
-# Edit service file paths if needed
-sudo nano /etc/systemd/system/host-agent.service
-
-# Enable and start service
-sudo systemctl daemon-reload
-sudo systemctl enable host-agent
-sudo systemctl start host-agent
-
-# Check status
-sudo systemctl status host-agent
-```
-
-#### 5. Verify Installation
-
-```bash
-# Check service is running
-curl http://127.0.0.1:9000/health
-
-# Test backup (replace TOKEN)
-curl -X POST http://127.0.0.1:9000/backup/n8n \
-  -H "Authorization: Bearer YOUR_TOKEN"
+├── pyproject.toml       # uv dependency management
+└── README.md
 ```
 
 ## API Endpoints
@@ -151,7 +36,7 @@ curl -X POST http://127.0.0.1:9000/backup/n8n \
 ```http
 GET /health
 ```
-Returns service status. No authentication required.
+No authentication required. Returns service status.
 
 **Response:**
 ```json
@@ -161,12 +46,12 @@ Returns service status. No authentication required.
 }
 ```
 
-### N8N Backup
+### n8n Backup
 ```http
 POST /backup/n8n
 Authorization: Bearer YOUR_TOKEN
 ```
-Triggers N8N workflow backup using the existing backup script.
+Triggers n8n workflow backup using the existing backup script.
 
 **Success Response:**
 ```json
@@ -181,75 +66,201 @@ Triggers N8N workflow backup using the existing backup script.
 **Error Response:**
 ```json
 {
-  "detail": "Backup operation failed: [error details]",
-  "timestamp": "2025-01-26 15:30:45"
+  "detail": "Backup operation failed: [error details]"
 }
 ```
 
-## Configuration
-
-All configuration is handled via environment variables:
+## Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `BEARER_TOKEN` | *(required)* | Authentication token for API access |
-| `HOST` | `127.0.0.1` | Server bind address - use `0.0.0.0` for Docker container access |
+| `HOST` | `0.0.0.0` | Server bind address |
 | `PORT` | `9000` | Server port |
-| `BACKUP_SCRIPT_PATH` | `/home/david/vps/backup-n8n-workflows.sh` | Path to backup script |
+| `BACKUP_SCRIPT_PATH` | `/home/david/backup-n8n-workflows.sh` | Path to backup script |
+
+## Quick Start
+
+### Local Development
+
+```bash
+# Clone and navigate to directory
+cd vps/host-agent
+
+# Copy and configure environment
+cp .env.example .env
+# Edit .env with your configuration
+
+# Install dependencies
+uv sync
+
+# Run server
+uv run python src/host_agent/main.py
+
+# Test endpoints
+curl http://127.0.0.1:9000/health
+curl -X POST http://127.0.0.1:9000/backup/n8n \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+## Production Deployment
+
+### Prerequisites
+
+- Python 3.9+
+- uv package manager
+- Docker (for n8n container operations)
+- Git (for backup operations)
+- Existing backup-n8n-workflows.sh script
+
+### Installation Steps
+
+1. **Deploy via script (recommended):**
+   ```bash
+   cd /home/david/vps
+   ./deploy.sh
+   ```
+
+2. **Or manual installation:**
+   ```bash
+   # Install uv if not present
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   source ~/.bashrc
+
+   # Configure environment
+   cd /home/david/vps/host-agent
+   cp .env.example .env
+   nano .env  # Add your configuration
+
+   # Install dependencies
+   uv sync
+
+   # Install systemd service
+   sudo cp systemd/host-agent.service /etc/systemd/system/
+   sudo systemctl daemon-reload
+   sudo systemctl enable host-agent
+   sudo systemctl start host-agent
+
+   # Verify
+   sudo systemctl status host-agent
+   curl http://127.0.0.1:9000/health
+   ```
 
 ## Docker Integration
 
-### Container Access Configuration
+### Container Access
 
-For Docker containers to access HostAgent, configure:
+HostAgent is configured to accept connections from Docker containers:
 
-```bash
-# In .env file
-HOST=0.0.0.0  # Allow container access
-PORT=9000
-```
+- Service binds to `0.0.0.0:9000` (configured in settings)
+- Containers access via `http://host.docker.internal:9000`
+- Bearer token authentication required
 
-**Security Note**: While binding to `0.0.0.0`, the service remains secure because:
-- Port 9000 is not exposed externally (localhost binding in systemd)
-- UFW firewall blocks external access
-- Bearer token authentication required for all operations
-
-### Container Communication
-
-Containers access HostAgent using `host.docker.internal:9000`:
+### Example from Container
 
 ```bash
-# From container
 curl -X POST http://host.docker.internal:9000/backup/n8n \
   -H "Authorization: Bearer $HOST_AGENT_BEARER_TOKEN"
 ```
 
-## Security Features
+## Security Configuration
 
-- **Network isolation**: Service accessible only from localhost and Docker containers
-- **Bearer token authentication**: All operations require valid token
-- **Systemd security**: Service runs with restricted permissions
-- **Resource limits**: Memory and CPU limits configured
-- **No privilege escalation**: Runs as regular user with Docker group access
+### Systemd Service Security
 
-## Monitoring & Logs
+The service runs with the following security restrictions:
 
+- **User/Group**: Runs as `david` user (non-root)
+- **Memory Limit**: 512MB
+- **CPU Quota**: 50%
+- **Filesystem Access**: Read-only home, strict system protection
+- **Write Access**: Limited to specific paths for backups
+- **Private Tmp**: Isolated temporary directory
+
+### Network Security
+
+- Port 9000 not exposed externally (UFW firewall)
+- Bearer token required for all operations
+- Service accessible only from localhost and Docker containers
+
+## Monitoring
+
+### Service Logs
 ```bash
-# View service logs
+# View live logs
 sudo journalctl -u host-agent -f
 
-# Check service status
+# View recent logs
+sudo journalctl -u host-agent -n 100
+```
+
+### Service Management
+```bash
+# Check status
 sudo systemctl status host-agent
 
-# Monitor health endpoint
+# Restart service
+sudo systemctl restart host-agent
+
+# Stop service
+sudo systemctl stop host-agent
+```
+
+### Health Monitoring
+```bash
+# Manual check
+curl http://127.0.0.1:9000/health
+
+# Continuous monitoring
 watch -n 5 curl -s http://127.0.0.1:9000/health
 ```
 
-## Extending HostAgent
+## Troubleshooting
 
-To add new operations:
+### Service Won't Start
 
-1. **Add endpoint to `main.py`:**
+```bash
+# Check logs for errors
+sudo journalctl -u host-agent -n 50
+
+# Test configuration
+cd /home/david/vps/host-agent
+uv run python -c "from src.host_agent.config import settings; print('Config OK')"
+
+# Check permissions
+ls -la /home/david/vps/host-agent
+ls -la /home/david/backup-n8n-workflows.sh
+```
+
+### Authentication Errors
+
+- Verify `BEARER_TOKEN` in `.env` matches client requests
+- Check for extra whitespace or special characters in token
+- Ensure Authorization header format: `Bearer YOUR_TOKEN`
+
+### Backup Failures
+
+```bash
+# Test backup script directly
+bash /home/david/vps/backup-n8n-workflows.sh
+
+# Check Docker access
+docker ps | grep n8n
+
+# Verify script permissions
+ls -la /home/david/vps/backup-n8n-workflows.sh
+```
+
+### Container Connection Issues
+
+- Verify HostAgent is running: `sudo systemctl status host-agent`
+- Check binding address is `0.0.0.0` in config
+- Test from container: `docker exec [container] curl http://host.docker.internal:9000/health`
+
+## Development
+
+### Adding New Endpoints
+
+1. Add endpoint to `main.py`:
    ```python
    @app.post("/your-operation")
    async def your_operation(token: str = Depends(verify_token)):
@@ -257,51 +268,30 @@ To add new operations:
        return {"status": "success"}
    ```
 
-2. **Add configuration if needed:**
+2. Add any new settings to `config.py`:
    ```python
-   # In config.py
    class Settings(BaseSettings):
        your_setting: str = "default_value"
    ```
 
-3. **Restart service:**
+3. Update and restart service:
    ```bash
-   sudo systemctl restart host-agent
+   cd /home/david/vps
+   ./deploy.sh
    ```
 
-## Troubleshooting
+### Interactive API Documentation
 
-### Service won't start
-```bash
-# Check service logs
-sudo journalctl -u host-agent -n 50
+When running locally, access interactive API docs at:
+- Swagger UI: http://127.0.0.1:9000/docs
+- ReDoc: http://127.0.0.1:9000/redoc
 
-# Check configuration
-uv run python -c "import sys; sys.path.append('src'); from host_agent.config import settings; print('Config OK')"
-```
+## Dependencies
 
-### Backup fails
-```bash
-# Test backup script directly
-bash /home/david/vps/backup-n8n-workflows.sh
-
-# Check Docker access
-docker ps | grep n8n
-```
-
-### Local development import errors
-The code handles both package imports and direct execution. If you get import errors:
-```bash
-# Run with explicit path
-PYTHONPATH=src uv run python -m host_agent.main
-
-# Or run directly
-uv run python src/host_agent/main.py
-```
-
-### Authentication errors
-- Verify `BEARER_TOKEN` in `.env` matches client requests
-- Check token doesn't have extra whitespace or special characters
+- **fastapi** >= 0.116.1 - Web framework
+- **pydantic-settings** >= 2.10.1 - Configuration management
+- **python-dotenv** >= 1.1.1 - Environment file support
+- **uvicorn** >= 0.35.0 - ASGI server
 
 ## License
 
