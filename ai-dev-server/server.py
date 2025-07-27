@@ -184,6 +184,10 @@ async def n8n_update_workflow(workflow_id: str, name: Optional[str] = None, node
         connections: New connections (optional)
         settings: New settings (optional)
     """
+    # First, run backup before making any changes
+    logger.info(f"Running backup before updating workflow {workflow_id}")
+    backup_result = await n8n_backup_workflows()
+    
     client = _get_n8n_client()
     
     # Get current workflow to merge updates
@@ -196,7 +200,16 @@ async def n8n_update_workflow(workflow_id: str, name: Optional[str] = None, node
         "settings": settings or current.get("settings", {})
     }
     
-    return await client.update_workflow(workflow_id, workflow_data)
+    # Update the workflow
+    logger.info(f"Updating workflow {workflow_id}")
+    update_result = await client.update_workflow(workflow_id, workflow_data)
+    
+    # Return combined result with both backup and update status
+    return {
+        "backup_status": backup_result,
+        "update_result": update_result,
+        "message": f"Backup completed ({'successfully' if backup_result.get('success') else 'with errors'}), workflow updated successfully"
+    }
 
 
 @mcp.tool
@@ -213,6 +226,10 @@ async def n8n_update_workflow_json(workflow_id: str, name: Optional[str] = None,
     """
     import json
     
+    # First, run backup before making any changes
+    logger.info(f"Running backup before updating workflow {workflow_id}")
+    backup_result = await n8n_backup_workflows()
+    
     client = _get_n8n_client()
     
     # Get current workflow to merge updates
@@ -225,7 +242,16 @@ async def n8n_update_workflow_json(workflow_id: str, name: Optional[str] = None,
         "settings": json.loads(settings_json) if settings_json else current.get("settings", {})
     }
     
-    return await client.update_workflow(workflow_id, workflow_data)
+    # Update the workflow
+    logger.info(f"Updating workflow {workflow_id}")
+    update_result = await client.update_workflow(workflow_id, workflow_data)
+    
+    # Return combined result with both backup and update status
+    return {
+        "backup_status": backup_result,
+        "update_result": update_result,
+        "message": f"Backup completed ({'successfully' if backup_result.get('success') else 'with errors'}), workflow updated successfully"
+    }
 
 
 @mcp.tool
