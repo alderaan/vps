@@ -39,41 +39,12 @@ curl -s http://127.0.0.1:8080/docs  # OpenAPI docs
 
 ## MCP Usage
 
-### Adding to Claude Desktop/Code
+### Adding to Claude Code
 
-**For local development (bearer token):**
 ```bash
-# Add server to Claude Code's MCP configuration  
+# Add server to Claude Code's MCP configuration
 claude mcp add --transport http hello-world-server http://127.0.0.1:8080/llm/mcp
 ```
-
-**For Claude Desktop (OAuth 2.1):**
-- **URL**: `https://ai-dev.correlion.ai/llm/mcp/`
-- **Client ID**: `claude-desktop-client`
-- **Client Secret**: Set in your `.env` file as `OAUTH_CLIENT_SECRET`
-
-### OAuth 2.1 Implementation
-
-This server implements a **simplified OAuth 2.1 flow** specifically for Claude Desktop and similar cloud clients that require OAuth authentication instead of direct bearer tokens.
-
-**Key Features:**
-- **Static client credentials** - Uses fixed client ID and configurable secret
-- **Auto-approval flow** - No user consent screen (single-user setup)
-- **Bearer token passthrough** - OAuth flow returns your existing `MCP_BEARER_TOKEN`
-- **Security** - Only clients with correct `client_id` and `client_secret` can authenticate
-
-**OAuth Endpoints:**
-- `/.well-known/oauth-authorization-server` - Metadata discovery
-- `/oauth/authorize` - Authorization endpoint (validates client_id)
-- `/oauth/token` - Token endpoint (validates client_secret)
-
-**Environment Variables:**
-```bash
-MCP_BEARER_TOKEN=your-mcp-token        # Used for direct API access
-OAUTH_CLIENT_SECRET=your-oauth-secret  # Used for OAuth client authentication
-```
-
-**Note:** This is a minimal OAuth implementation for single-user scenarios. For production multi-user setups, consider a full OAuth provider like Auth0.
 
 ### Manual Testing via cURL
 
