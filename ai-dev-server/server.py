@@ -200,6 +200,35 @@ async def n8n_update_workflow(workflow_id: str, name: Optional[str] = None, node
 
 
 @mcp.tool
+async def n8n_update_workflow_json(workflow_id: str, name: Optional[str] = None, nodes_json: Optional[str] = None, 
+                                  connections_json: Optional[str] = None, settings_json: Optional[str] = None) -> Dict:
+    """Update existing n8n workflow using JSON strings.
+    
+    Args:
+        workflow_id: ID of workflow to update
+        name: New workflow name (optional)
+        nodes_json: New nodes list as JSON string (optional)
+        connections_json: New connections as JSON string (optional)
+        settings_json: New settings as JSON string (optional)
+    """
+    import json
+    
+    client = _get_n8n_client()
+    
+    # Get current workflow to merge updates
+    current = await client.get_workflow(workflow_id)
+    
+    workflow_data = {
+        "name": name or current.get("name"),
+        "nodes": json.loads(nodes_json) if nodes_json else current.get("nodes", []),
+        "connections": json.loads(connections_json) if connections_json else current.get("connections", {}),
+        "settings": json.loads(settings_json) if settings_json else current.get("settings", {})
+    }
+    
+    return await client.update_workflow(workflow_id, workflow_data)
+
+
+@mcp.tool
 async def n8n_delete_workflow(workflow_id: str) -> Dict:
     """Delete n8n workflow by ID."""
     client = _get_n8n_client()
