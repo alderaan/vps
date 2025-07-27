@@ -423,11 +423,49 @@ async def oauth_metadata():
         "issuer": base_url,
         "authorization_endpoint": f"{base_url}/oauth/authorize",
         "token_endpoint": f"{base_url}/oauth/token",
+        "registration_endpoint": f"{base_url}/oauth/register",  # DCR endpoint
         "code_challenge_methods_supported": ["S256"],
         "grant_types_supported": ["authorization_code"],
         "response_types_supported": ["code"],
         "scopes_supported": ["mcp"]
     }
+
+
+# Simple in-memory store for dynamic clients (stateless for single user)
+dynamic_clients = {}
+
+@app.post("/oauth/register")
+async def oauth_register(request: Request):
+    """Dynamic Client Registration (DCR) endpoint for Claude Desktop."""
+    try:
+        client_request = await request.json()
+        logger.info(f"DCR request: {client_request}")
+        
+        # Generate fake client credentials for Claude Desktop
+        client_id = f"claude_dynamic_{secrets.token_urlsafe(8)}"
+        client_secret = f"secret_{secrets.token_urlsafe(16)}"
+        
+        # Store temporarily (stateless - will be regenerated each time)
+        dynamic_clients[client_id] = client_secret
+        
+        # Return DCR response as per RFC 7591
+        response = {
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "client_id_issued_at": int(time.time()),
+            "client_secret_expires_at": 0,  # Never expires
+            "grant_types": ["authorization_code"],
+            "response_types": ["code"],
+            "redirect_uris": client_request.get("redirect_uris", []),
+            "scope": "mcp"
+        }
+        
+        logger.info(f"DCR response: client_id={client_id}")
+        return response
+        
+    except Exception as e:
+        logger.error(f"DCR error: {e}")
+        raise HTTPException(status_code=400, detail="Invalid client metadata")
 
 
 @app.get("/oauth/authorize")
@@ -442,8 +480,8 @@ async def oauth_authorize(
     """OAuth authorization endpoint - validates client_id."""
     logger.info(f"OAuth authorize request from client_id: {client_id}")
     
-    # Validate client_id
-    if client_id != OAUTH_CLIENT_ID:
+    # Accept both static and dynamic client IDs
+    if client_id != OAUTH_CLIENT_ID and client_id not in dynamic_clients:
         logger.warning(f"Invalid client_id: {client_id}")
         raise HTTPException(status_code=400, detail="Invalid client_id")
     
@@ -473,14 +511,22 @@ async def oauth_token(
     """OAuth token endpoint - validates client credentials before returning token."""
     logger.info(f"OAuth token request with code: {code}")
     
-    # Validate client credentials
-    if client_id != OAUTH_CLIENT_ID:
-        logger.warning(f"Invalid client_id: {client_id}")
-        raise HTTPException(status_code=401, detail="Invalid client_id")
+    # Validate client credentials (accept both static and dynamic)
+    valid_client = False
     
-    if client_secret != OAUTH_CLIENT_SECRET:
-        logger.warning(f"Invalid client_secret for client_id: {client_id}")
-        raise HTTPException(status_code=401, detail="Invalid client_secret")
+    # Check static client
+    if client_id == OAUTH_CLIENT_ID and client_secret == OAUTH_CLIENT_SECRET:
+        valid_client = True
+        logger.info("Static client credentials validated")
+    
+    # Check dynamic client
+    elif client_id in dynamic_clients and dynamic_clients[client_id] == client_secret:
+        valid_client = True
+        logger.info(f"Dynamic client credentials validated: {client_id}")
+    
+    if not valid_client:
+        logger.warning(f"Invalid client credentials: {client_id}")
+        raise HTTPException(status_code=401, detail="Invalid client credentials")
     
     # Return the existing bearer token only if credentials are valid
     return {
