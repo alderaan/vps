@@ -195,7 +195,7 @@ async def n8n_update_workflow_json(workflow_id: str, name: Optional[str] = None,
     
     # First, run backup before making any changes
     logger.info(f"Running backup before updating workflow {workflow_id}")
-    backup_result = await _run_n8n_backup()
+    backup_before_result = await _run_n8n_backup()
     
     client = _get_n8n_client()
     
@@ -213,11 +213,16 @@ async def n8n_update_workflow_json(workflow_id: str, name: Optional[str] = None,
     logger.info(f"Updating workflow {workflow_id}")
     update_result = await client.update_workflow(workflow_id, workflow_data)
     
+    # Run backup after successful update to preserve the new state
+    logger.info(f"Running backup after updating workflow {workflow_id}")
+    backup_after_result = await _run_n8n_backup()
+    
     # Return combined result with both backup and update status
     return {
-        "backup_status": backup_result,
+        "backup_before_status": backup_before_result,
         "update_result": update_result,
-        "message": f"Backup completed ({'successfully' if backup_result.get('success') else 'with errors'}), workflow updated successfully"
+        "backup_after_status": backup_after_result,
+        "message": f"Pre-update backup: {'success' if backup_before_result.get('success') else 'failed'}, workflow updated successfully, post-update backup: {'success' if backup_after_result.get('success') else 'failed'}"
     }
 
 
