@@ -1,0 +1,24 @@
+name: Deploy AI Dev Server
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'ai-dev-server/**' ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Build and push Docker image
+      run: |
+        cd ai-dev-server
+        docker buildx build --platform linux/amd64 -t registry.correlion.ai/ai-dev-server:latest --push .
+        
+    - name: Deploy to VPS
+      run: |
+        /home/david/vps/github-runner/deploy-ai-dev-server.sh
