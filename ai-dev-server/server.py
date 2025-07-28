@@ -29,21 +29,21 @@ if not BEARER_TOKEN:
 N8N_BASE_URL = os.getenv("N8N_BASE_URL", "http://localhost:5678")
 N8N_API_KEY = os.getenv("N8N_API_KEY")
 
+
 class N8nClient:
     """Client for interacting with n8n API."""
-    
+
     def __init__(self, base_url: str, api_key: str):
-        self.base_url = base_url.rstrip('/')
+        self.base_url = base_url.rstrip("/")
         self.api_key = api_key
-        self.headers = {
-            "X-N8N-API-KEY": api_key,
-            "Content-Type": "application/json"
-        }
-    
-    async def _request(self, method: str, endpoint: str, data: Optional[Dict] = None) -> Dict:
+        self.headers = {"X-N8N-API-KEY": api_key, "Content-Type": "application/json"}
+
+    async def _request(
+        self, method: str, endpoint: str, data: Optional[Dict] = None
+    ) -> Dict:
         """Make HTTP request to n8n API."""
         url = f"{self.base_url}/api/v1{endpoint}"
-        
+
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.request(
@@ -51,14 +51,14 @@ class N8nClient:
                     url=url,
                     headers=self.headers,
                     json=data if data else None,
-                    timeout=30.0
+                    timeout=30.0,
                 )
                 response.raise_for_status()
                 return response.json()
             except httpx.HTTPError as e:
                 logger.error(f"n8n API request failed: {e}")
                 raise Exception(f"n8n API error: {str(e)}")
-    
+
     async def list_workflows(self) -> List[Dict]:
         """Get list of all workflows."""
         response = await self._request("GET", "/workflows")
@@ -66,30 +66,31 @@ class N8nClient:
         if isinstance(response, dict) and "data" in response:
             return response["data"]
         return response
-    
+
     async def get_workflow(self, workflow_id: str) -> Dict:
         """Get specific workflow by ID."""
         return await self._request("GET", f"/workflows/{workflow_id}")
-    
+
     async def create_workflow(self, workflow_data: Dict) -> Dict:
         """Create new workflow."""
         return await self._request("POST", "/workflows", workflow_data)
-    
+
     async def update_workflow(self, workflow_id: str, workflow_data: Dict) -> Dict:
         """Update existing workflow."""
         return await self._request("PUT", f"/workflows/{workflow_id}", workflow_data)
-    
+
     async def delete_workflow(self, workflow_id: str) -> Dict:
         """Delete workflow."""
         return await self._request("DELETE", f"/workflows/{workflow_id}")
-    
+
     async def activate_workflow(self, workflow_id: str) -> Dict:
         """Activate workflow."""
         return await self._request("POST", f"/workflows/{workflow_id}/activate")
-    
+
     async def deactivate_workflow(self, workflow_id: str) -> Dict:
         """Deactivate workflow."""
         return await self._request("POST", f"/workflows/{workflow_id}/deactivate")
+
 
 # Create FastMCP server
 mcp = FastMCP("Hello World Development Server")
@@ -99,6 +100,12 @@ mcp = FastMCP("Hello World Development Server")
 def hello_world() -> str:
     """Returns a simple Hello World greeting."""
     return "Hello World from FastMCP!"
+
+
+@mcp.tool
+def get_magical_creature() -> str:
+    """Returns a magical creature."""
+    return "Beer Phoenix!"
 
 
 @mcp.tool
@@ -130,7 +137,7 @@ async def n8n_list_workflows() -> List[Dict]:
     """List all n8n workflows. Use this tool to search for workflows by filtering the results."""
     client = _get_n8n_client()
     workflows = await client.list_workflows()
-    
+
     # Return only essential fields to reduce output size
     return [
         {
@@ -139,7 +146,7 @@ async def n8n_list_workflows() -> List[Dict]:
             "active": w.get("active"),
             "isArchived": w.get("isArchived"),
             "createdAt": w.get("createdAt"),
-            "updatedAt": w.get("updatedAt")
+            "updatedAt": w.get("updatedAt"),
         }
         for w in workflows
     ]
@@ -153,13 +160,18 @@ async def n8n_get_workflow(workflow_id: str) -> Dict:
 
 
 @mcp.tool
-async def n8n_create_workflow_json(name: str, nodes_json: str, connections_json: str, settings_json: Optional[str] = None) -> Dict:
+async def n8n_create_workflow_json(
+    name: str,
+    nodes_json: str,
+    connections_json: str,
+    settings_json: Optional[str] = None,
+) -> Dict:
     """Create new n8n workflow using JSON strings.
-    
-    RECOMMENDED APPROACH: For complex workflows, start with a minimal working version 
-    (2-3 basic nodes) and use n8n_update_workflow_json to incrementally add more nodes 
+
+    RECOMMENDED APPROACH: For complex workflows, start with a minimal working version
+    (2-3 basic nodes) and use n8n_update_workflow_json to incrementally add more nodes
     and connections. This reduces errors and enables faster iteration.
-    
+
     Args:
         name: Workflow name
         nodes_json: List of workflow nodes as JSON string
@@ -167,23 +179,27 @@ async def n8n_create_workflow_json(name: str, nodes_json: str, connections_json:
         settings_json: Optional workflow settings as JSON string
     """
     import json
-    
+
     client = _get_n8n_client()
     workflow_data = {
         "name": name,
         "nodes": json.loads(nodes_json),
         "connections": json.loads(connections_json),
-        "settings": json.loads(settings_json) if settings_json else {}
+        "settings": json.loads(settings_json) if settings_json else {},
     }
     return await client.create_workflow(workflow_data)
 
 
-
 @mcp.tool
-async def n8n_update_workflow_json(workflow_id: str, name: Optional[str] = None, nodes_json: Optional[str] = None, 
-                                  connections_json: Optional[str] = None, settings_json: Optional[str] = None) -> Dict:
+async def n8n_update_workflow_json(
+    workflow_id: str,
+    name: Optional[str] = None,
+    nodes_json: Optional[str] = None,
+    connections_json: Optional[str] = None,
+    settings_json: Optional[str] = None,
+) -> Dict:
     """Update existing n8n workflow using JSON strings.
-    
+
     Args:
         workflow_id: ID of workflow to update
         name: New workflow name (optional)
@@ -192,37 +208,43 @@ async def n8n_update_workflow_json(workflow_id: str, name: Optional[str] = None,
         settings_json: New settings as JSON string (optional)
     """
     import json
-    
+
     # First, run backup before making any changes
     logger.info(f"Running backup before updating workflow {workflow_id}")
     backup_before_result = await _run_n8n_backup()
-    
+
     client = _get_n8n_client()
-    
+
     # Get current workflow to merge updates
     current = await client.get_workflow(workflow_id)
-    
+
     workflow_data = {
         "name": name or current.get("name"),
         "nodes": json.loads(nodes_json) if nodes_json else current.get("nodes", []),
-        "connections": json.loads(connections_json) if connections_json else current.get("connections", {}),
-        "settings": json.loads(settings_json) if settings_json else current.get("settings", {})
+        "connections": (
+            json.loads(connections_json)
+            if connections_json
+            else current.get("connections", {})
+        ),
+        "settings": (
+            json.loads(settings_json) if settings_json else current.get("settings", {})
+        ),
     }
-    
+
     # Update the workflow
     logger.info(f"Updating workflow {workflow_id}")
     update_result = await client.update_workflow(workflow_id, workflow_data)
-    
+
     # Run backup after successful update to preserve the new state
     logger.info(f"Running backup after updating workflow {workflow_id}")
     backup_after_result = await _run_n8n_backup()
-    
+
     # Return combined result with both backup and update status
     return {
         "backup_before_status": backup_before_result,
         "update_result": update_result,
         "backup_after_status": backup_after_result,
-        "message": f"Pre-update backup: {'success' if backup_before_result.get('success') else 'failed'}, workflow updated successfully, post-update backup: {'success' if backup_after_result.get('success') else 'failed'}"
+        "message": f"Pre-update backup: {'success' if backup_before_result.get('success') else 'failed'}, workflow updated successfully, post-update backup: {'success' if backup_after_result.get('success') else 'failed'}",
     }
 
 
@@ -252,18 +274,18 @@ async def n8n_deactivate_workflow(workflow_id: str) -> Dict:
 #     """Search n8n workflows by name or description."""
 #     client = _get_n8n_client()
 #     workflows = await client.list_workflows()
-#     
+#
 #     # Simple text search in name and description
 #     query_lower = query.lower()
 #     matches = []
-#     
+#
 #     for workflow in workflows:
 #         name = workflow.get("name", "").lower()
 #         description = workflow.get("description", "").lower()
-#         
+#
 #         if query_lower in name or query_lower in description:
 #             matches.append(workflow)
-#     
+#
 #     return matches
 
 
@@ -277,9 +299,9 @@ async def _run_n8n_backup() -> Dict:
             logger.error("HOST_AGENT_BEARER_TOKEN environment variable missing")
             return {
                 "success": False,
-                "error": "HOST_AGENT_BEARER_TOKEN environment variable is required"
+                "error": "HOST_AGENT_BEARER_TOKEN environment variable is required",
             }
-        
+
         logger.info("Calling HostAgent backup endpoint...")
         # Call HostAgent backup endpoint
         async with httpx.AsyncClient() as client:
@@ -287,11 +309,11 @@ async def _run_n8n_backup() -> Dict:
                 "http://host.docker.internal:9000/backup/n8n",
                 headers={
                     "Authorization": f"Bearer {host_agent_token}",
-                    "Content-Type": "application/json"
+                    "Content-Type": "application/json",
                 },
-                timeout=300  # 5 minute timeout
+                timeout=300,  # 5 minute timeout
             )
-            
+
             if response.status_code == 200:
                 logger.info("HostAgent backup completed successfully")
                 result = response.json()
@@ -300,30 +322,32 @@ async def _run_n8n_backup() -> Dict:
                     "status": result.get("status"),
                     "timestamp": result.get("timestamp"),
                     "message": result.get("message"),
-                    "output": result.get("output")
+                    "output": result.get("output"),
                 }
             else:
-                logger.error(f"HostAgent backup failed with status {response.status_code}")
+                logger.error(
+                    f"HostAgent backup failed with status {response.status_code}"
+                )
                 error_detail = response.text
                 return {
                     "success": False,
-                    "error": f"HostAgent API error ({response.status_code}): {error_detail}"
+                    "error": f"HostAgent API error ({response.status_code}): {error_detail}",
                 }
-                
+
     except httpx.TimeoutException:
         return {
             "success": False,
-            "error": "HostAgent backup request timed out after 5 minutes"
+            "error": "HostAgent backup request timed out after 5 minutes",
         }
     except httpx.ConnectError:
         return {
             "success": False,
-            "error": "Could not connect to HostAgent service at http://host.docker.internal:9000"
+            "error": "Could not connect to HostAgent service at http://host.docker.internal:9000",
         }
     except Exception as e:
         return {
             "success": False,
-            "error": f"Unexpected error calling HostAgent: {str(e)}"
+            "error": f"Unexpected error calling HostAgent: {str(e)}",
         }
 
 
