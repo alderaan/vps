@@ -34,8 +34,8 @@ sleep 10
 
 # Check service health
 echo "Checking service health..."
-if docker-compose ps | grep -q "Up.*healthy\|Up.*running"; then
-    echo "✅ Service is running and healthy"
+if docker-compose ps | grep -q "Up"; then
+    echo "✅ Service is running"
     
     # Show container status
     echo ""

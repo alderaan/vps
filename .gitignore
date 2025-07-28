@@ -44,7 +44,6 @@ ENV/
 
 # uv
 .uv/
-uv.lock
 
 # Docker
 .dockerignore
