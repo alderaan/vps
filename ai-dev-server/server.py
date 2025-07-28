@@ -103,12 +103,6 @@ def hello_world() -> str:
 
 
 @mcp.tool
-def get_magical_creature() -> str:
-    """Returns a magical creature."""
-    return "Beer Phoenix!"
-
-
-@mcp.tool
 def echo(message: str) -> str:
     """Echoes back the provided message."""
     return f"Echo: {message}"
