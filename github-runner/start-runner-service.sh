@@ -27,6 +27,17 @@ sudo ./svc.sh install
 echo "Starting runner service..."
 sudo ./svc.sh start
 
+# Enable auto-start on boot
+echo "Enabling auto-start on system boot..."
+SERVICE_NAME=$(sudo systemctl list-units --type=service | grep actions.runner | awk '{print $1}' | head -n1)
+if [ -n "$SERVICE_NAME" ]; then
+    sudo systemctl enable "$SERVICE_NAME"
+    echo "✅ Auto-start enabled for $SERVICE_NAME"
+else
+    echo "⚠️  Could not find service name for auto-start. Run manually after setup:"
+    echo "   sudo systemctl enable actions.runner.*"
+fi
+
 # Check status
 echo "Checking service status..."
 sudo ./svc.sh status
@@ -40,4 +51,4 @@ echo "  Start:   sudo ./svc.sh start"
 echo "  Stop:    sudo ./svc.sh stop"
 echo "  Restart: sudo ./svc.sh stop && sudo ./svc.sh start"
 echo ""
-echo "Service will auto-start on system boot."
+echo "✅ Service will auto-start on system boot."

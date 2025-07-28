@@ -33,6 +33,11 @@ cd /home/david/actions-runner
 ./start-runner-service.sh
 ```
 
+This will automatically:
+- Install the runner as a systemd service
+- Start the service
+- Enable auto-start on system reboot
+
 ### 4. Create GitHub Workflow
 Add `.github/workflows/deploy-ai-dev-server.yml` to your repository (see below).
 
