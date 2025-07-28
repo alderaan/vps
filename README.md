@@ -16,6 +16,7 @@ This VPS setup provides a development and production environment with the follow
 - **DBT** - Data transformation and analytics
 - **Container Registry** - Private Docker registry for custom images
 - **DTC App** - Custom frontend application
+- **GitHub Actions Runner** - Self-hosted runner for automated deployments
 
 ### Service Communication
 
@@ -116,9 +117,16 @@ cp host-agent/.env.example host-agent/.env
 cd docker-compose/[service-name]
 docker-compose up -d
 
+# Set up GitHub Actions runner for automated deployments
+cd github-runner
+./setup-runner.sh
+# Configure with GitHub token from repo settings
+./start-runner-service.sh
+
 # Verify deployment
 docker ps
 sudo systemctl status host-agent
+sudo systemctl status actions.runner.*
 ```
 
 ### Service Access
@@ -145,9 +153,22 @@ docker-compose down
 sudo systemctl start/stop/restart host-agent
 sudo journalctl -u host-agent -f
 
+# GitHub Actions Runner
+sudo systemctl start/stop/restart actions.runner.*
+sudo journalctl -u actions.runner.* -f
+
 # Deploy script (for HostAgent updates)
 ./deploy.sh
 ```
+
+### Automated Deployments
+
+GitHub Actions automatically deploys services when changes are pushed:
+
+- **AI Dev Server**: Push changes to `ai-dev-server/` → Auto-builds and deploys
+- **Workflow**: `.github/workflows/deploy-ai-dev-server.yml` defines deployment
+- **Runner**: Self-hosted runner on VPS executes deployments
+- **Registry**: Images pushed to `registry.correlion.ai`
 
 ### Container Names
 
@@ -239,6 +260,7 @@ Each service has its own development setup. See individual service READMEs:
 - [AI Dev Server](ai-dev-server/README.md) - FastMCP development and testing
 - [HostAgent](host-agent/README.md) - Local API development
 - [DBT](docker-compose/dbt/README.md) - Data transformation development
+- [GitHub Runner](github-runner/README.md) - Automated deployment setup
 
 ### Adding New Services
 
@@ -247,6 +269,7 @@ Each service has its own development setup. See individual service READMEs:
 3. Update this README with service description
 4. Add to deployment scripts if needed
 5. Configure Caddy reverse proxy if external access needed
+6. Create GitHub workflow in `.github/workflows/` for automated deployment
 
 ### Testing
 
