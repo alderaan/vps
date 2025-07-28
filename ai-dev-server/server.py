@@ -156,6 +156,10 @@ async def n8n_get_workflow(workflow_id: str) -> Dict:
 async def n8n_create_workflow_json(name: str, nodes_json: str, connections_json: str, settings_json: Optional[str] = None) -> Dict:
     """Create new n8n workflow using JSON strings.
     
+    RECOMMENDED APPROACH: For complex workflows, start with a minimal working version 
+    (2-3 basic nodes) and use n8n_update_workflow_json to incrementally add more nodes 
+    and connections. This reduces errors and enables faster iteration.
+    
     Args:
         name: Workflow name
         nodes_json: List of workflow nodes as JSON string
