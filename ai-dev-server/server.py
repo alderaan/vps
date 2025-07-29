@@ -55,6 +55,26 @@ class N8nClient:
                 )
                 response.raise_for_status()
                 return response.json()
+            except httpx.HTTPStatusError as e:
+                error_detail = ""
+                try:
+                    # Try to get the error details from response body
+                    error_detail = e.response.text
+                    # Try to parse as JSON if possible
+                    try:
+                        error_json = e.response.json()
+                        error_detail = f"JSON: {error_json}"
+                    except:
+                        # If not JSON, keep the raw text
+                        pass
+                except:
+                    pass
+                
+                logger.error(f"n8n API request failed: {e}")
+                if error_detail:
+                    logger.error(f"n8n error details: {error_detail}")
+                
+                raise Exception(f"n8n API error: {str(e)}\nDetails: {error_detail}")
             except httpx.HTTPError as e:
                 logger.error(f"n8n API request failed: {e}")
                 raise Exception(f"n8n API error: {str(e)}")
