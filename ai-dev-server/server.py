@@ -72,11 +72,11 @@ class N8nClient:
                         pass
                 except:
                     pass
-                
+
                 logger.error(f"n8n API request failed: {e}")
                 if error_detail:
                     logger.error(f"n8n error details: {error_detail}")
-                
+
                 raise Exception(f"n8n API error: {str(e)}\nDetails: {error_detail}")
             except httpx.HTTPError as e:
                 logger.error(f"n8n API request failed: {e}")
@@ -202,17 +202,17 @@ async def n8n_create_workflow_json(
         "connections": json.loads(connections_json),
         "settings": json.loads(settings_json) if settings_json else {},
     }
-    
+
     # Save JSON to disk for debugging
     debug_dir = Path("/tmp/n8n-debug")
     debug_dir.mkdir(exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     debug_file = debug_dir / f"create_{name}_{timestamp}.json"
-    
+
     with open(debug_file, "w") as f:
         json.dump(workflow_data, f, indent=2)
     logger.info(f"Saved workflow JSON to {debug_file} for debugging")
-    
+
     try:
         result = await client.create_workflow(workflow_data)
         logger.info(f"Successfully created workflow: {result.get('id')}")
@@ -231,6 +231,8 @@ async def n8n_update_workflow_json(
     settings_json: Optional[str] = None,
 ) -> Dict:
     """Update existing n8n workflow using JSON strings.
+      1. Don't include pinData - This field is not allowed when updating workflows
+      2. Don't include callerPolicy in the settings - This is an additional property that's not permitted in the settings object
 
     Args:
         workflow_id: ID of workflow to update
@@ -260,14 +262,14 @@ async def n8n_update_workflow_json(
             json.loads(settings_json) if settings_json else current.get("settings", {})
         ),
     }
-    
+
     # Save JSON to disk for debugging
     debug_dir = Path("/tmp/n8n-debug")
     debug_dir.mkdir(exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     workflow_name = workflow_data.get("name", "unnamed").replace(" ", "_")
     debug_file = debug_dir / f"update_{workflow_id}_{workflow_name}_{timestamp}.json"
-    
+
     with open(debug_file, "w") as f:
         json.dump(workflow_data, f, indent=2)
     logger.info(f"Saved workflow JSON to {debug_file} for debugging")
