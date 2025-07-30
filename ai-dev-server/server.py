@@ -405,6 +405,114 @@ async def n8n_backup_workflows() -> Dict:
     return await _run_n8n_backup()
 
 
+# n8n-workflows integration tools
+N8N_WORKFLOWS_URL = "http://n8n-workflows:8000"  # Container-to-container communication
+
+
+@mcp.tool
+async def search_workflow_templates(
+    query: str = "", 
+    category: str = "all", 
+    trigger: str = "all",
+    complexity: str = "all", 
+    page: int = 1,
+    per_page: int = 20
+) -> Dict:
+    """Search n8n workflow templates from the repository.
+    
+    Args:
+        query: Search text (searches names, descriptions, integrations)
+        category: Filter by category (messaging, ai_ml, database, etc.) or "all"
+        trigger: Filter by trigger type (Manual, Webhook, Scheduled, Complex) or "all"  
+        complexity: Filter by complexity (low, medium, high) or "all"
+        page: Page number for pagination
+        per_page: Results per page (max 100)
+    
+    Returns:
+        Dict with workflows list, total count, pagination info
+    """
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            params = {
+                "q": query,
+                "trigger": trigger,
+                "complexity": complexity,
+                "page": page,
+                "per_page": per_page
+            }
+            
+            if category != "all":
+                response = await client.get(f"{N8N_WORKFLOWS_URL}/api/workflows/category/{category}", params=params)
+            else:
+                response = await client.get(f"{N8N_WORKFLOWS_URL}/api/workflows", params=params)
+            
+            response.raise_for_status()
+            return response.json()
+    except httpx.ConnectError:
+        raise Exception("Cannot connect to n8n-workflows service. Is it running?")
+    except httpx.HTTPError as e:
+        raise Exception(f"Error searching workflow templates: {str(e)}")
+
+
+@mcp.tool 
+async def get_workflow_template(filename: str) -> Dict:
+    """Get detailed workflow template including raw JSON.
+    
+    Args:
+        filename: The workflow filename (e.g., "0001_Telegram_Schedule_Automation_Scheduled.json")
+    
+    Returns:
+        Dict with metadata and raw_json fields containing the complete workflow
+    """
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(f"{N8N_WORKFLOWS_URL}/api/workflows/{filename}")
+            response.raise_for_status()
+            return response.json()
+    except httpx.ConnectError:
+        raise Exception("Cannot connect to n8n-workflows service. Is it running?")
+    except httpx.HTTPError as e:
+        if e.response.status_code == 404:
+            raise Exception(f"Workflow template '{filename}' not found")
+        raise Exception(f"Error getting workflow template: {str(e)}")
+
+
+@mcp.tool
+async def get_workflow_categories() -> Dict:
+    """Get available workflow categories for filtering.
+    
+    Returns:
+        Dict with categories list (messaging, ai_ml, database, etc.)
+    """
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(f"{N8N_WORKFLOWS_URL}/api/categories")
+            response.raise_for_status()
+            return response.json()
+    except httpx.ConnectError:
+        raise Exception("Cannot connect to n8n-workflows service. Is it running?")
+    except httpx.HTTPError as e:
+        raise Exception(f"Error getting workflow categories: {str(e)}")
+
+
+@mcp.tool
+async def get_workflow_template_stats() -> Dict:
+    """Get statistics about the workflow template database.
+    
+    Returns:
+        Dict with total workflows, active count, trigger distribution, etc.
+    """
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(f"{N8N_WORKFLOWS_URL}/api/stats")
+            response.raise_for_status()
+            return response.json()
+    except httpx.ConnectError:
+        raise Exception("Cannot connect to n8n-workflows service. Is it running?")
+    except httpx.HTTPError as e:
+        raise Exception(f"Error getting workflow template stats: {str(e)}")
+
+
 # Create the MCP's ASGI app (following FastMCP docs exactly)
 mcp_app = mcp.http_app()
 
