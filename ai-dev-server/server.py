@@ -13,6 +13,9 @@ import logging
 import os
 import httpx
 import subprocess
+from datetime import datetime
+from pathlib import Path
+import json
 from typing import Dict, List, Optional, Any
 
 # Configure logging
@@ -192,8 +195,6 @@ async def n8n_create_workflow_json(
         connections_json: Node connections configuration as JSON string
         settings_json: Optional workflow settings as JSON string
     """
-    import json
-
     client = _get_n8n_client()
     workflow_data = {
         "name": name,
@@ -201,7 +202,24 @@ async def n8n_create_workflow_json(
         "connections": json.loads(connections_json),
         "settings": json.loads(settings_json) if settings_json else {},
     }
-    return await client.create_workflow(workflow_data)
+    
+    # Save JSON to disk for debugging
+    debug_dir = Path("/tmp/n8n-debug")
+    debug_dir.mkdir(exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    debug_file = debug_dir / f"create_{name}_{timestamp}.json"
+    
+    with open(debug_file, "w") as f:
+        json.dump(workflow_data, f, indent=2)
+    logger.info(f"Saved workflow JSON to {debug_file} for debugging")
+    
+    try:
+        result = await client.create_workflow(workflow_data)
+        logger.info(f"Successfully created workflow: {result.get('id')}")
+        return result
+    except Exception as e:
+        logger.error(f"Failed to create workflow. Debug JSON saved at: {debug_file}")
+        raise
 
 
 @mcp.tool
@@ -221,8 +239,6 @@ async def n8n_update_workflow_json(
         connections_json: New connections as JSON string (optional)
         settings_json: New settings as JSON string (optional)
     """
-    import json
-
     # First, run backup before making any changes
     logger.info(f"Running backup before updating workflow {workflow_id}")
     backup_before_result = await _run_n8n_backup()
@@ -244,22 +260,39 @@ async def n8n_update_workflow_json(
             json.loads(settings_json) if settings_json else current.get("settings", {})
         ),
     }
+    
+    # Save JSON to disk for debugging
+    debug_dir = Path("/tmp/n8n-debug")
+    debug_dir.mkdir(exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    workflow_name = workflow_data.get("name", "unnamed").replace(" ", "_")
+    debug_file = debug_dir / f"update_{workflow_id}_{workflow_name}_{timestamp}.json"
+    
+    with open(debug_file, "w") as f:
+        json.dump(workflow_data, f, indent=2)
+    logger.info(f"Saved workflow JSON to {debug_file} for debugging")
 
-    # Update the workflow
-    logger.info(f"Updating workflow {workflow_id}")
-    update_result = await client.update_workflow(workflow_id, workflow_data)
+    try:
+        # Update the workflow
+        logger.info(f"Updating workflow {workflow_id}")
+        update_result = await client.update_workflow(workflow_id, workflow_data)
+        logger.info(f"Successfully updated workflow: {workflow_id}")
 
-    # Run backup after successful update to preserve the new state
-    logger.info(f"Running backup after updating workflow {workflow_id}")
-    backup_after_result = await _run_n8n_backup()
+        # Run backup after successful update to preserve the new state
+        logger.info(f"Running backup after updating workflow {workflow_id}")
+        backup_after_result = await _run_n8n_backup()
 
-    # Return combined result with both backup and update status
-    return {
-        "backup_before_status": backup_before_result,
-        "update_result": update_result,
-        "backup_after_status": backup_after_result,
-        "message": f"Pre-update backup: {'success' if backup_before_result.get('success') else 'failed'}, workflow updated successfully, post-update backup: {'success' if backup_after_result.get('success') else 'failed'}",
-    }
+        # Return combined result with both backup and update status
+        return {
+            "backup_before_status": backup_before_result,
+            "update_result": update_result,
+            "backup_after_status": backup_after_result,
+            "message": f"Pre-update backup: {'success' if backup_before_result.get('success') else 'failed'}, workflow updated successfully, post-update backup: {'success' if backup_after_result.get('success') else 'failed'}",
+            "debug_file": str(debug_file),
+        }
+    except Exception as e:
+        logger.error(f"Failed to update workflow. Debug JSON saved at: {debug_file}")
+        raise
 
 
 @mcp.tool
