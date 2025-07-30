@@ -43,15 +43,15 @@ if docker-compose ps | grep -q "Up"; then
     docker-compose ps
     
     # Test health endpoint
-    if curl -f -s http://127.0.0.1:8000/health > /dev/null 2>&1; then
+    if curl -f -s http://127.0.0.1:8001/health > /dev/null 2>&1; then
         echo "✅ Health check passed"
         
         # Test API endpoint
-        if curl -f -s http://127.0.0.1:8000/api/stats > /dev/null 2>&1; then
+        if curl -f -s http://127.0.0.1:8001/api/stats > /dev/null 2>&1; then
             echo "✅ API endpoint responding"
             
             # Show quick stats
-            STATS=$(curl -s http://127.0.0.1:8000/api/stats)
+            STATS=$(curl -s http://127.0.0.1:8001/api/stats)
             TOTAL=$(echo "$STATS" | grep -o '"total":[0-9]*' | cut -d':' -f2)
             echo "📊 Database contains $TOTAL workflows"
         else
