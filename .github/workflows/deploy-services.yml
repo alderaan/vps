@@ -1,0 +1,114 @@
+name: Deploy VPS Services
+
+on:
+  push:
+    branches: [ main ]
+    paths: 
+      - 'ai-dev-server/**'
+      - 'n8n-workflows/**'
+  workflow_dispatch:
+    inputs:
+      service:
+        description: 'Service to deploy (ai-dev-server, n8n-workflows, or both)'
+        required: false
+        default: 'both'
+        type: choice
+        options:
+          - both
+          - ai-dev-server
+          - n8n-workflows
+
+jobs:
+  detect-changes:
+    runs-on: self-hosted
+    outputs:
+      ai-dev-server-changed: ${{ steps.changes.outputs.ai-dev-server }}
+      n8n-workflows-changed: ${{ steps.changes.outputs.n8n-workflows }}
+      deploy-ai-dev-server: ${{ steps.decide.outputs.deploy-ai-dev-server }}
+      deploy-n8n-workflows: ${{ steps.decide.outputs.deploy-n8n-workflows }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 2
+        
+    - name: Check for changes
+      id: changes
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "Manual dispatch - checking input parameter"
+          echo "ai-dev-server=false" >> $GITHUB_OUTPUT
+          echo "n8n-workflows=false" >> $GITHUB_OUTPUT
+        else
+          echo "Checking git diff for changes..."
+          if git diff --name-only HEAD~1 HEAD | grep -q "^ai-dev-server/"; then
+            echo "ai-dev-server=true" >> $GITHUB_OUTPUT
+          else
+            echo "ai-dev-server=false" >> $GITHUB_OUTPUT
+          fi
+          
+          if git diff --name-only HEAD~1 HEAD | grep -q "^n8n-workflows/"; then
+            echo "n8n-workflows=true" >> $GITHUB_OUTPUT
+          else
+            echo "n8n-workflows=false" >> $GITHUB_OUTPUT
+          fi
+        fi
+    
+    - name: Decide what to deploy
+      id: decide
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          case "${{ github.event.inputs.service }}" in
+            "ai-dev-server")
+              echo "deploy-ai-dev-server=true" >> $GITHUB_OUTPUT
+              echo "deploy-n8n-workflows=false" >> $GITHUB_OUTPUT
+              ;;
+            "n8n-workflows")
+              echo "deploy-ai-dev-server=false" >> $GITHUB_OUTPUT
+              echo "deploy-n8n-workflows=true" >> $GITHUB_OUTPUT
+              ;;
+            "both")
+              echo "deploy-ai-dev-server=true" >> $GITHUB_OUTPUT
+              echo "deploy-n8n-workflows=true" >> $GITHUB_OUTPUT
+              ;;
+          esac
+        else
+          echo "deploy-ai-dev-server=${{ steps.changes.outputs.ai-dev-server }}" >> $GITHUB_OUTPUT
+          echo "deploy-n8n-workflows=${{ steps.changes.outputs.n8n-workflows }}" >> $GITHUB_OUTPUT
+        fi
+
+  deploy-ai-dev-server:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.deploy-ai-dev-server == 'true'
+    runs-on: self-hosted
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Build and push AI Dev Server image
+      run: |
+        cd ai-dev-server
+        docker buildx build --platform linux/amd64 -t registry.correlion.ai/ai-dev-server:latest --push .
+        
+    - name: Deploy AI Dev Server to VPS
+      run: |
+        /home/david/vps/github-runner/deploy-ai-dev-server.sh
+
+  deploy-n8n-workflows:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.deploy-n8n-workflows == 'true'
+    runs-on: self-hosted
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Build and push N8N Workflows image
+      run: |
+        cd n8n-workflows
+        docker buildx build --platform linux/amd64 -t registry.correlion.ai/n8n-workflows:latest --push .
+        
+    - name: Deploy N8N Workflows to VPS
+      run: |
+        /home/david/vps/github-runner/deploy-n8n-workflows.sh
