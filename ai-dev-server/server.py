@@ -185,9 +185,7 @@ async def n8n_create_workflow_json(
 ) -> Dict:
     """Create new n8n workflow using JSON strings.
 
-    RECOMMENDED APPROACH: For complex workflows, start with a minimal working version
-    (2-3 basic nodes) and use n8n_update_workflow_json to incrementally add more nodes
-    and connections. This reduces errors and enables faster iteration.
+    Never attempt to set dummy credentials yourself. This leads to errors. Omit credentials entirely.
 
     Args:
         name: Workflow name
@@ -233,6 +231,7 @@ async def n8n_update_workflow_json(
     """Update existing n8n workflow using JSON strings.
       1. Don't include pinData - This field is not allowed when updating workflows
       2. Don't include callerPolicy in the settings - This is an additional property that's not permitted in the settings object
+      3. Never attempt to set dummy credentials yourself. This leads to errors. Omit credentials entirely.
 
     Args:
         workflow_id: ID of workflow to update
