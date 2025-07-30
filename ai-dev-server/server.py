@@ -406,7 +406,7 @@ async def n8n_backup_workflows() -> Dict:
 
 
 # n8n-workflows integration tools
-N8N_WORKFLOWS_URL = "http://n8n-workflows:8000"  # Container-to-container communication
+N8N_WORKFLOWS_URL = "http://n8n-workflows:8000"  # Container-to-container communication (internal port stays 8000)
 
 
 @mcp.tool
