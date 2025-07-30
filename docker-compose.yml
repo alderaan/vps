@@ -1,0 +1,7 @@
+services:
+  doc:
+    image: workflows-doc:latest
+    build:
+      context: .
+    ports:
+      - "8000:8000"
