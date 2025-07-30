@@ -7,6 +7,7 @@ services:
     volumes:
         - /var/run/docker.sock:/var/run/docker.sock
         - /home/david/n8n-workflows-backup:/home/david/n8n-workflows-backup
+        - /home/david/n8n-debug:/tmp/n8n-debug
     environment:
       - PYTHONUNBUFFERED=1
       - MCP_BEARER_TOKEN=${MCP_BEARER_TOKEN}
