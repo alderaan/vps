@@ -4,13 +4,15 @@ Combined FastAPI + FastMCP server providing AI integrations and n8n workflow man
 
 ## Overview
 
-This server integrates FastAPI and FastMCP to provide:
+AI Dev Server integrates FastAPI and FastMCP to provide:
 - Web API endpoints for health checks and service information
 - MCP (Model Context Protocol) tools for AI agent integrations
 - n8n workflow management capabilities
-- Secure authentication via Bearer tokens
+- Multi-Agent capabilities are planned
 
-## Architecture Diagram
+## AI Dev Server as part of overall system
+
+### Architecture Diagram
 
 ```mermaid
 graph TB
@@ -58,9 +60,9 @@ graph TB
     class UFW security
 ```
 
-## Technology Stack - Overall System
+### Technology Stack of overall system
 
-### Core Technologies
+#### Core Technologies
 
 1. **Docker** - Container runtime and orchestration
    - Manages all containerized services
@@ -102,7 +104,7 @@ graph TB
    - Port access control
    - Service isolation
 
-### Communication Flow
+#### Communication Flow
 
 1. **Client → Caddy**: HTTPS requests with Bearer authentication
 2. **Caddy → AI Dev Server**: Reverse proxy to localhost port 8080
