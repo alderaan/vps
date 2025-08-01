@@ -16,25 +16,28 @@ AI Dev Server integrates FastAPI and FastMCP to provide:
 
 ```mermaid
 sequenceDiagram
-    participant Local as Claude AI<br/>(Local)
-    participant Remote as MCP Server<br/>(Remote)
-    participant N8N as n8n<br/>(Workflows)
+    participant User as User
+    participant Local as Claude AI
+    participant Remote as MCP Server
+    participant N8N as n8n
 
-    Note over Local: User says:<br/>"My email workflow isn't<br/>sending emails anymore"
+    User->>Local: "My email workflow isn't<br/>sending emails anymore"
     
-    Local->>Remote: Get workflow_123<br/>to investigate
+    Local-->>User: "Let me investigate<br/>that for you"
+    
+    Local->>Remote: MCP Tool: Get workflow
     Remote->>N8N: Read workflow_123
     N8N-->>Remote: Workflow data<br/>(nodes, connections)
     Remote-->>Local: Here's the workflow
     
     Note over Local: Claude analyzes:<br/>Email node missing<br/>SMTP credentials
     
-    Local->>Remote: Update workflow_123<br/>with fix
+    Local->>Remote: MCP Tool: Update workflow
     Remote->>N8N: Update email node<br/>configuration
     N8N-->>Remote: Workflow updated
     Remote-->>Local: Fix applied!
     
-    Note over Local: Claude tells user:<br/>"Found the issue! Email credentials<br/>were missing. I've updated<br/>the workflow for you."
+    Local-->>User: "Found the issue! Email credentials<br/>were missing. I've updated<br/>the workflow for you."
 ```
 
 ### What's Happening?
