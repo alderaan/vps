@@ -23,8 +23,6 @@ sequenceDiagram
 
     User->>Local: "My email workflow isn't<br/>sending emails anymore"
     
-    Local-->>User: "Let me investigate<br/>that for you"
-    
     Local->>Remote: MCP Tool: Get workflow
     Remote->>N8N: Read workflow_123
     N8N-->>Remote: Workflow data<br/>(nodes, connections)
