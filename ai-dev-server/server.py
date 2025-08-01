@@ -12,11 +12,10 @@ import asyncio
 import logging
 import os
 import httpx
-import subprocess
 from datetime import datetime
 from pathlib import Path
 import json
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -411,23 +410,23 @@ N8N_WORKFLOWS_URL = "http://n8n-workflows:8000"  # Container-to-container commun
 
 @mcp.tool
 async def search_workflow_templates(
-    query: str = "", 
-    category: str = "all", 
+    query: str = "",
+    category: str = "all",
     trigger: str = "all",
-    complexity: str = "all", 
+    complexity: str = "all",
     page: int = 1,
-    per_page: int = 20
+    per_page: int = 20,
 ) -> Dict:
     """Search n8n workflow templates from the repository.
-    
+
     Args:
         query: Search text (searches names, descriptions, integrations)
         category: Filter by category (messaging, ai_ml, database, etc.) or "all"
-        trigger: Filter by trigger type (Manual, Webhook, Scheduled, Complex) or "all"  
+        trigger: Filter by trigger type (Manual, Webhook, Scheduled, Complex) or "all"
         complexity: Filter by complexity (low, medium, high) or "all"
         page: Page number for pagination
         per_page: Results per page (max 100)
-    
+
     Returns:
         Dict with workflows list, total count, pagination info
     """
@@ -438,14 +437,19 @@ async def search_workflow_templates(
                 "trigger": trigger,
                 "complexity": complexity,
                 "page": page,
-                "per_page": per_page
+                "per_page": per_page,
             }
-            
+
             if category != "all":
-                response = await client.get(f"{N8N_WORKFLOWS_URL}/api/workflows/category/{category}", params=params)
+                response = await client.get(
+                    f"{N8N_WORKFLOWS_URL}/api/workflows/category/{category}",
+                    params=params,
+                )
             else:
-                response = await client.get(f"{N8N_WORKFLOWS_URL}/api/workflows", params=params)
-            
+                response = await client.get(
+                    f"{N8N_WORKFLOWS_URL}/api/workflows", params=params
+                )
+
             response.raise_for_status()
             return response.json()
     except httpx.ConnectError:
@@ -454,13 +458,13 @@ async def search_workflow_templates(
         raise Exception(f"Error searching workflow templates: {str(e)}")
 
 
-@mcp.tool 
+@mcp.tool
 async def get_workflow_template(filename: str) -> Dict:
     """Get detailed workflow template including raw JSON.
-    
+
     Args:
         filename: The workflow filename (e.g., "0001_Telegram_Schedule_Automation_Scheduled.json")
-    
+
     Returns:
         Dict with metadata and raw_json fields containing the complete workflow
     """
@@ -480,7 +484,7 @@ async def get_workflow_template(filename: str) -> Dict:
 @mcp.tool
 async def get_workflow_categories() -> Dict:
     """Get available workflow categories for filtering.
-    
+
     Returns:
         Dict with categories list (messaging, ai_ml, database, etc.)
     """
@@ -498,7 +502,7 @@ async def get_workflow_categories() -> Dict:
 @mcp.tool
 async def get_workflow_template_stats() -> Dict:
     """Get statistics about the workflow template database.
-    
+
     Returns:
         Dict with total workflows, active count, trigger distribution, etc.
     """
