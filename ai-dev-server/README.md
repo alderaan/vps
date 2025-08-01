@@ -54,9 +54,9 @@ sequenceDiagram
 
 Think of it like this: Claude is your assistant, MCP is the phone line, and n8n is the service you're calling. Claude doesn't directly access n8n - it goes through MCP which acts as a secure middleman.
 
-## AI Dev Server as part of overall system
+## System Architecture
 
-### Architecture Diagram
+### VPS Infrastructure Overview
 
 ```mermaid
 graph TB
@@ -104,7 +104,7 @@ graph TB
     class UFW security
 ```
 
-### Technology Stack of overall system
+### VPS Technology Stack
 
 #### Core Technologies
 
@@ -148,7 +148,7 @@ graph TB
    - Port access control
    - Service isolation
 
-#### Communication Flow
+### Communication Flow
 
 1. **Client → Caddy**: HTTPS requests with Bearer authentication
 2. **Caddy → AI Dev Server**: Reverse proxy to localhost port 8080
@@ -159,7 +159,7 @@ graph TB
 7. **Docker → Services**: Container orchestration and networking
 
 
-## Technology Stack AI Dev Server
+## Tech Stack
 
 - **Python 3.11+** - Runtime environment
 - **FastMCP 2.10.6+** - MCP protocol implementation
@@ -264,9 +264,7 @@ docker run -d \
 
 ## Production Deployment
 
-### Docker Compose
-
-The server is deployed via Docker Compose with the following configuration:
+### Docker Compose Configuration
 
 ```yaml
 services:
@@ -298,9 +296,7 @@ services:
       - supabase
 ```
 
-### Caddy Reverse Proxy
-
-The server is secured behind Caddy with the following configuration:
+### Caddy Configuration
 
 ```caddyfile
 ai-dev.correlion.ai {
@@ -373,8 +369,6 @@ curl -X POST https://ai-dev.correlion.ai/llm/mcp/ \
 
 ### Host Service Communication
 
-The container needs to communicate with the HostAgent service running on the host:
-
 - Uses `host.docker.internal:9000` to reach HostAgent
 - Requires `extra_hosts: ["host.docker.internal:host-gateway"]` in Docker
 - HostAgent must bind to `0.0.0.0:9000` to accept container connections
@@ -418,7 +412,7 @@ tail -f server.log
 
 ### Adding New MCP Tools
 
-1. Define tool function with `@mcp.tool` decorator in server.py:224
+1. Define tool function with `@mcp.tool` decorator
 2. Add proper type hints and docstring
 3. Return JSON-serializable data
 4. Test with Claude Code or manual API calls
