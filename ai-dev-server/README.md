@@ -10,6 +10,50 @@ AI Dev Server integrates FastAPI and FastMCP to provide:
 - n8n workflow management capabilities
 - Multi-Agent capabilities are planned
 
+## How Claude AI Controls n8n Through MCP
+
+### Example: Debugging a Workflow
+
+```mermaid
+sequenceDiagram
+    participant Local as Claude AI<br/>(Local)
+    participant Remote as MCP Server<br/>(Remote)
+    participant N8N as n8n<br/>(Workflows)
+
+    Note over Local: User says:<br/>"My email workflow isn't<br/>sending emails anymore"
+    
+    Local->>Remote: Get workflow_123<br/>to investigate
+    Remote->>N8N: Read workflow_123
+    N8N-->>Remote: Workflow data<br/>(nodes, connections)
+    Remote-->>Local: Here's the workflow
+    
+    Note over Local: Claude analyzes:<br/>Email node missing<br/>SMTP credentials
+    
+    Local->>Remote: Update workflow_123<br/>with fix
+    Remote->>N8N: Update email node<br/>configuration
+    N8N-->>Remote: Workflow updated
+    Remote-->>Local: Fix applied!
+    
+    Note over Local: Claude tells user:<br/>"Found the issue! Email credentials<br/>were missing. I've updated<br/>the workflow for you."
+```
+
+### What's Happening?
+
+1. **You report a problem** - You tell Claude your workflow isn't working
+2. **Claude investigates** - Uses MCP tools to read the workflow configuration
+3. **Claude analyzes** - Identifies the issue (missing email credentials)
+4. **Claude fixes it** - Updates the workflow with the correct configuration
+5. **Claude confirms** - Tells you what was wrong and that it's now fixed
+
+### Key Concepts
+
+- **Claude AI** - The AI assistant running on your computer
+- **MCP (Model Context Protocol)** - A bridge that lets Claude use external tools
+- **MCP Server** - A remote server (this AI Dev Server) that has tools Claude can use
+- **n8n** - The workflow automation platform you want to control
+
+Think of it like this: Claude is your assistant, MCP is the phone line, and n8n is the service you're calling. Claude doesn't directly access n8n - it goes through MCP which acts as a secure middleman.
+
 ## AI Dev Server as part of overall system
 
 ### Architecture Diagram
