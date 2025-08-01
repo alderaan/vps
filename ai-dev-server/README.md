@@ -21,7 +21,7 @@ sequenceDiagram
     participant Remote as MCP Server
     participant N8N as n8n
 
-    User->>Local: "My email workflow isn't<br/>sending emails anymore"
+    User->>Local: "My n8n workflow isn't<br/>sending emails anymore"
     
     Local->>Remote: MCP Tool: Get workflow
     Remote->>N8N: Read workflow_123
@@ -31,7 +31,7 @@ sequenceDiagram
     Note over Local: Claude analyzes:<br/>Email node missing<br/>SMTP credentials
     
     Local->>Remote: MCP Tool: Update workflow
-    Remote->>N8N: Update email node<br/>configuration
+    Remote->>N8N: Update workflow JSON
     N8N-->>Remote: Workflow updated
     Remote-->>Local: Fix applied!
     
