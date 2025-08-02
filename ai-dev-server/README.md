@@ -22,27 +22,30 @@ sequenceDiagram
     participant N8N as n8n
     participant Host as Host Agent
 
+    Note over Remote: MCP = Model Context Protocol
+    
     User->>Local: "My n8n workflow isn't<br/>sending emails anymore"
     Local-->>User: "Let me investigate"
     
-    Local->>Remote: MCP Tool: List workflows
+    Local->>Remote: List workflows
     Remote->>N8N: Get all workflows
     N8N-->>Remote: List of workflows
     Remote-->>Local: Workflow list
     
     Note over Local: Claude identifies<br/>target workflow
     
-    Local->>Remote: MCP Tool: Get workflow 123
+    Local->>Remote: Get workflow 123
     Remote->>N8N: Read workflow 123
     N8N-->>Remote: Workflow JSON
     Remote-->>Local: Here's the workflow
     
     Note over Local: Claude analyzes and<br/>generates correct<br/>workflow JSON
     
-    Local->>Remote: MCP Tool: Update workflow
+    Local->>Remote: Update workflow
     Remote->>N8N: Update workflow JSON
     N8N-->>Remote: Workflow updated
     Remote->>Host: Backup workflows to Git
+    Host-->>Remote: Backup complete
     Remote-->>Local: Success
     
     Local-->>User: "Found the issue! Email credentials<br/>were missing. I've updated<br/>the workflow for you."
