@@ -41,10 +41,10 @@ sequenceDiagram
     
     Note over Local: Claude analyzes and<br/>generates correct<br/>workflow JSON
     
-    Local->>Remote: Update workflow
-    Remote->>N8N: Update workflow JSON
+    Local->>Remote: Update workflow 123
+    Remote->>N8N: Update workflow 123 JSON
     N8N-->>Remote: Workflow updated
-    Remote->>Host: Backup workflows to Git
+    Remote->>Host: Backup workflow JSONs to Git
     Host-->>Remote: Backup complete
     Remote-->>Local: Success
     
