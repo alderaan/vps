@@ -1,6 +1,6 @@
 # VPS Infrastructure
 
-Modern, secure VPS infrastructure with containerized services and AI integration capabilities.
+Personal VPS setup for AI agents, workflow automation, and data engineering projects using Python, FastAPI, and n8n.
 
 ## Architecture Overview
 
