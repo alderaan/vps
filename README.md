@@ -8,36 +8,66 @@ This VPS setup provides a development and production environment with the follow
 
 ### Core Services
 
-- **AI Dev Server** - FastMCP + FastAPI server for AI integrations and n8n workflow management
-- **HostAgent** - Secure local API for privileged host operations (backups, system tasks)
-- **n8n** - Workflow automation platform with AI capabilities
-- **Supabase** - Complete backend with PostgreSQL, Auth, Storage, and Edge Functions
-- **Browserless** - Headless Chrome service for web automation
-- **DBT** - Data transformation and analytics
-- **Container Registry** - Private Docker registry for custom images
-- **DTC App** - Custom frontend application
-- **GitHub Actions Runner** - Self-hosted runner for automated deployments
+- **[AI Dev Server](ai-dev-server/)** - FastMCP + FastAPI server for AI integrations and n8n workflow management
+- **[HostAgent](host-agent/)** - Secure local API for privileged host operations (backups, system tasks)
+- **[n8n](docker-compose/n8n/)** - Workflow automation platform with AI capabilities
+- **[n8n-workflows](n8n-workflows/)** - Fast HTTP server for n8n template search
+- **[Supabase](docker-compose/supabase/)** - Complete backend with PostgreSQL, Auth, Storage, and Edge Functions
+- **[Browserless](docker-compose/browserless/)** - Headless Chrome service for web automation
+- **[DBT](docker-compose/dbt/)** - Data transformation and analytics
+- **[Container Registry](docker-compose/container-registry/)** - Private Docker registry for custom images
+- **[GitHub Actions Runner](github-runner/)** - Self-hosted runner for automated deployments
 
-### Service Communication
+### VPS Infrastructure Overview
 
-```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   AI Dev Server │◄──►│    HostAgent     │◄──►│   Backup Scripts│
-│  (Container)    │    │   (Host Service) │    │    (Host)       │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-         │                       │
-         ▼                       ▼
-┌─────────────────┐    ┌──────────────────┐
-│      n8n        │    │    Git Repo      │
-│  (Container)    │    │  (Workflows)     │
-└─────────────────┘    └──────────────────┘
-         │
-         ▼
-┌─────────────────┐
-│   Supabase      │
-│ (Multi-container│
-│    Stack)       │
-└─────────────────┘
+```mermaid
+graph TB
+    %% Client Layer
+    Client[Claude AI Client] -->|MCP Protocol<br/>Bearer Auth| Caddy[Caddy Reverse Proxy<br/>SSL/TLS]
+    
+    %% Web Layer
+    Caddy -->|HTTP| AIDev[AI Dev Server<br/>FastAPI + FastMCP]
+    
+    %% Application Layer
+    AIDev -->|HTTP| N8N[n8n]
+    AIDev -->|HTTP| HostAgent[HostAgent<br/>Host Service]
+    AIDev -->|HTTP| Workflows[n8n-workflows<br/>Template Search]
+    
+    %% Host Services
+    HostAgent -->|File System<br/>Operations| FileSystem[VPS File System<br/>Read/Write]
+    
+    %% Automation Layer
+    GitHub[GitHub Actions] -->|CI/CD Pipeline| Runner[Self-hosted Runner]
+    Runner -->|Docker Commands| Docker[Docker Engine]
+    
+    %% Container Management
+    Docker -->|Container Orchestration| Containers{Docker Containers}
+    Containers --> AIDev
+    Containers --> N8N
+    Containers --> Supabase
+    Containers --> DBT[DBT]
+    Containers --> Browserless[Browserless]
+    
+    %% Security Layer (standalone boxes)
+    UFW[UFW Firewall<br/>Network Protection]
+    
+    %% Styling
+    classDef client fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef web fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef app fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+    classDef host fill:#f5f5f5,stroke:#424242,stroke-width:2px
+    classDef infra fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef container fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    classDef security fill:#ffebee,stroke:#b71c1c,stroke-width:2px
+    
+    class Client client
+    class Caddy web
+    class AIDev,HostAgent,Workflows app
+    class N8N,Supabase,DBT,Browserless container
+    class FileSystem host
+    class GitHub,Runner infra
+    class Docker,Containers container
+    class UFW security
 ```
 
 ## Docker Networking
