@@ -3,8 +3,11 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Install uv for fast dependency management
-RUN pip install uv
+# Install curl for health checks and uv for fast dependency management
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install uv
 
 # Copy dependency files
 COPY pyproject.toml uv.lock* ./
