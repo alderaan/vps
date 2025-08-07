@@ -17,6 +17,7 @@ This VPS setup provides a development and production environment with the follow
 - **[DBT](docker-compose/dbt/)** - Data transformation and analytics
 - **[Container Registry](docker-compose/container-registry/)** - Private Docker registry for custom images
 - **[GitHub Actions Runner](github-runner/)** - Self-hosted runner for automated deployments
+- **Caddy** - Reverse proxy with automatic SSL/TLS and routing for all public-facing services
 
 ### VPS Infrastructure Overview
 
