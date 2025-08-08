@@ -12,7 +12,6 @@ This VPS setup provides a development and production environment with the follow
 - **[HostAgent](host-agent/)** - Secure local API for privileged host operations (backups, system tasks)
 - **[n8n](docker-compose/n8n/)** - Workflow automation platform with AI capabilities
 - **[n8n-workflows](n8n-workflows/)** - Fast HTTP server for n8n template search
-- **[n8nio](n8nio/)** - n8n TypeScript schema definitions for MCP tools (git submodule)
 - **[Supabase](docker-compose/supabase/)** - Complete backend with PostgreSQL, Auth, Storage, and Edge Functions
 - **[Browserless](docker-compose/browserless/)** - Headless Chrome service for web automation
 - **[DBT](docker-compose/dbt/)** - Data transformation and analytics
