@@ -12,6 +12,7 @@ This VPS setup provides a development and production environment with the follow
 - **[HostAgent](host-agent/)** - Secure local API for privileged host operations (backups, system tasks)
 - **[n8n](docker-compose/n8n/)** - Workflow automation platform with AI capabilities
 - **[n8n-workflows](n8n-workflows/)** - Fast HTTP server for n8n template search
+- **[n8n-docs](n8n-docs/)** - n8n node documentation for MCP tools (git submodule)
 - **[Supabase](docker-compose/supabase/)** - Complete backend with PostgreSQL, Auth, Storage, and Edge Functions
 - **[Browserless](docker-compose/browserless/)** - Headless Chrome service for web automation
 - **[DBT](docker-compose/dbt/)** - Data transformation and analytics
@@ -203,50 +204,52 @@ sudo systemctl status actions.runner.*
 
 ## Submodule Management
 
-### n8nio Submodule (n8n TypeScript Definitions)
+### n8n-docs Submodule (n8n Node Documentation)
 
-The `n8nio/` directory contains n8n's TypeScript node and credential definitions via git submodule. This provides MCP tools with access to n8n's schema definitions while keeping the repository lightweight through sparse checkout.
+The `n8n-docs/` directory contains n8n's comprehensive node documentation via git submodule. This provides MCP tools with access to detailed documentation for all n8n nodes, credentials, and integrations while maintaining sync with the official docs.
 
 #### Initial Setup
 
 ```bash
-# Initialize submodule (first time)
-git submodule update --init --recursive n8nio
+# Initialize n8n-docs submodule (first time)
+git submodule update --init --recursive n8n-docs
 
-# Or initialize all submodules
+# Or initialize all submodules at once
 git submodule update --init --recursive
 ```
 
-#### Updating n8n Definitions
+#### Updating n8n Documentation
 
 ```bash
-# Update to latest n8n version
-git submodule update --remote n8nio
+# Update n8n documentation to latest version  
+git submodule update --remote n8n-docs
 
 # Commit the submodule update
-git add n8nio
-git commit -m "Update n8nio submodule to latest n8n version"
+git add n8n-docs
+git commit -m "Update n8n-docs submodule to latest version"
 git push
 ```
 
 #### What's Included
 
-The submodule uses sparse checkout to only include:
-- `packages/nodes-base/nodes/*` - Core node implementations
-- `packages/nodes-base/credentials/*` - Credential configurations  
-- `packages/@n8n/nodes-langchain/` - LangChain integration nodes
-- `packages/@n8n/imap/` - IMAP package
+**n8n-docs Submodule** uses sparse checkout to only include:
+- `docs/integrations/builtin/app-nodes/*` - Application node documentation
+- `docs/integrations/builtin/core-nodes/*` - Core node documentation
+- `docs/integrations/builtin/cluster-nodes/*` - LangChain cluster node documentation
+- `docs/integrations/builtin/credentials/*` - Credential documentation
+- `docs/integrations/builtin/trigger-nodes/*` - Trigger node documentation
+- `docs/integrations/builtin/node-types.md` & `rate-limits.md`
 
-This provides ~55% of the n8n repository (only the TypeScript definitions needed by MCP tools).
+This provides comprehensive documentation for all n8n nodes and integrations.
 
 #### Troubleshooting
 
 ```bash
 # If submodule appears empty or outdated
-git submodule update --init --remote --force n8nio
+git submodule update --init --remote --force n8n-docs
 
 # Reset submodule to tracked commit
-git submodule update --init n8nio
+git submodule update --init n8n-docs
 
 # Check submodule status
 git submodule status

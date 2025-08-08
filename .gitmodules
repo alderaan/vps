@@ -1,3 +1,6 @@
 [submodule "n8nio"]
 	path = n8nio
 	url = https://github.com/n8n-io/n8n.git
+[submodule "n8n-docs"]
+	path = n8n-docs
+	url = https://github.com/n8n-io/n8n-docs.git
