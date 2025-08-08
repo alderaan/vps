@@ -13,6 +13,8 @@ HostAgent provides a secure API interface for Docker containers to request host-
 - **Modern Stack**: Built with FastAPI, Pydantic, and uv package manager
 - **Systemd Service**: Runs as a managed service with security restrictions
 - **Health Monitoring**: Health check endpoint for service monitoring
+- **n8n Search**: Fast ripgrep-powered search across n8n docs and TypeScript nodes
+- **File Operations**: Secure file retrieval with path traversal protection
 
 ## Project Structure
 
@@ -52,6 +54,44 @@ POST /backup/n8n
 Authorization: Bearer YOUR_TOKEN
 ```
 Triggers n8n workflow backup using the existing backup script.
+
+### n8n Documentation Search
+```http
+POST /search
+Authorization: Bearer YOUR_TOKEN
+Content-Type: application/json
+```
+Search n8n documentation and TypeScript nodes using ripgrep.
+
+**Request Body:**
+```json
+{
+  "query": "workflow trigger",
+  "directory": "n8n-docs",
+  "max_results": 30,
+  "context_lines": 2
+}
+```
+
+**Response:** Search results with file paths, line numbers, content matches, and context.
+
+### File Retrieval
+```http
+POST /get_files
+Authorization: Bearer YOUR_TOKEN
+Content-Type: application/json
+```
+Retrieve full content of multiple files from n8n directories.
+
+**Request Body:**
+```json
+{
+  "directory": "n8n-nodes-only", 
+  "files": ["path/to/file1.ts", "path/to/file2.md"]
+}
+```
+
+**Response:** File contents with metadata and any errors encountered.
 
 **Success Response:**
 ```json

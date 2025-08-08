@@ -8,6 +8,8 @@ AI Dev Server integrates FastAPI and FastMCP to provide:
 - Web API endpoints for health checks and service information
 - MCP (Model Context Protocol) tools for AI agent integrations
 - n8n workflow management capabilities
+- n8n documentation and code search capabilities
+- Workflow template repository integration
 - Multi-Agent capabilities are planned
 
 ## How Claude AI Controls n8n Through MCP
@@ -110,6 +112,17 @@ The server provides the following MCP tools:
 - `n8n_activate_workflow` - Activate workflow for execution
 - `n8n_deactivate_workflow` - Deactivate workflow
 - `n8n_backup_workflows` - Backup workflows to git via HostAgent
+
+### n8n Documentation & Code Search Tools
+- `n8n_search_docs` - Search n8n documentation using ripgrep
+- `n8n_search_nodes` - Search TypeScript node implementations
+- `n8n_get_files` - Retrieve full content of documentation/code files
+
+### n8n Template Repository Tools
+- `search_workflow_templates` - Search workflow template repository
+- `get_workflow_template` - Get specific workflow template with JSON
+- `get_workflow_categories` - Get available template categories
+- `get_workflow_template_stats` - Get repository statistics
 
 ## Environment Variables
 

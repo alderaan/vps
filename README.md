@@ -12,6 +12,7 @@ This VPS setup provides a development and production environment with the follow
 - **[HostAgent](host-agent/)** - Secure local API for privileged host operations (backups, system tasks)
 - **[n8n](docker-compose/n8n/)** - Workflow automation platform with AI capabilities
 - **[n8n-workflows](n8n-workflows/)** - Fast HTTP server for n8n template search
+- **[n8nio](n8nio/)** - n8n TypeScript schema definitions for MCP tools (git submodule)
 - **[Supabase](docker-compose/supabase/)** - Complete backend with PostgreSQL, Auth, Storage, and Edge Functions
 - **[Browserless](docker-compose/browserless/)** - Headless Chrome service for web automation
 - **[DBT](docker-compose/dbt/)** - Data transformation and analytics
@@ -70,6 +71,34 @@ graph TB
     class Docker,Containers container
     class UFW security
 ```
+
+## Capabilities
+
+This VPS infrastructure provides powerful AI and automation capabilities:
+
+### AI Agent Integration
+- **Claude AI Control**: Complete n8n workflow management via MCP protocol
+- **Documentation Search**: Fast ripgrep-powered search across n8n docs and TypeScript source code
+- **Template Repository**: 2,000+ searchable n8n workflow templates with metadata
+- **Intelligent Workflow Creation**: AI can read docs, search examples, and build workflows
+
+### Workflow Automation
+- **n8n Platform**: Full workflow automation with 400+ integrations
+- **AI-Enhanced Workflows**: LangChain, OpenAI, and custom AI nodes
+- **Template Library**: Pre-built workflows for common automation patterns
+- **Version Control**: Automated Git backup of all workflow configurations
+
+### Development & Data Engineering
+- **Complete Backend**: Supabase with PostgreSQL, Auth, Storage, Edge Functions
+- **Data Transformation**: DBT for analytics and data pipeline management
+- **Web Automation**: Browserless Chrome for scraping and testing
+- **CI/CD Pipeline**: GitHub Actions with self-hosted runner
+
+### Infrastructure & Security
+- **Containerized Architecture**: Docker Compose orchestration for all services
+- **Secure Networking**: Firewall protection with localhost-only service binding
+- **SSL/TLS**: Automatic certificate management via Caddy reverse proxy
+- **Backup & Recovery**: Automated backups with Git integration
 
 ## Docker Networking
 
@@ -133,9 +162,12 @@ Services discover each other using:
 ### Deployment
 
 ```bash
-# Clone repository
-git clone <repository-url> /home/david/vps
+# Clone repository with submodules
+git clone --recurse-submodules <repository-url> /home/david/vps
 cd /home/david/vps
+
+# Or if already cloned, initialize submodules
+git submodule update --init --recursive
 
 # Configure environment variables
 cp host-agent/.env.example host-agent/.env
@@ -169,6 +201,57 @@ sudo systemctl status actions.runner.*
 - **Container Registry**: https://registry.correlion.ai
 - **DTC App**: https://dtc.correlion.ai
 - **Airflow**: https://airflow.correlion.ai
+
+## Submodule Management
+
+### n8nio Submodule (n8n TypeScript Definitions)
+
+The `n8nio/` directory contains n8n's TypeScript node and credential definitions via git submodule. This provides MCP tools with access to n8n's schema definitions while keeping the repository lightweight through sparse checkout.
+
+#### Initial Setup
+
+```bash
+# Initialize submodule (first time)
+git submodule update --init --recursive n8nio
+
+# Or initialize all submodules
+git submodule update --init --recursive
+```
+
+#### Updating n8n Definitions
+
+```bash
+# Update to latest n8n version
+git submodule update --remote n8nio
+
+# Commit the submodule update
+git add n8nio
+git commit -m "Update n8nio submodule to latest n8n version"
+git push
+```
+
+#### What's Included
+
+The submodule uses sparse checkout to only include:
+- `packages/nodes-base/nodes/*` - Core node implementations
+- `packages/nodes-base/credentials/*` - Credential configurations  
+- `packages/@n8n/nodes-langchain/` - LangChain integration nodes
+- `packages/@n8n/imap/` - IMAP package
+
+This provides ~55% of the n8n repository (only the TypeScript definitions needed by MCP tools).
+
+#### Troubleshooting
+
+```bash
+# If submodule appears empty or outdated
+git submodule update --init --remote --force n8nio
+
+# Reset submodule to tracked commit
+git submodule update --init n8nio
+
+# Check submodule status
+git submodule status
+```
 
 ## Service Management
 
