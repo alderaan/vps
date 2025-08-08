@@ -35,7 +35,9 @@ graph TB
     AIDev -->|HTTP| Workflows[n8n-workflows<br/>Template Search]
     
     %% Host Services
-    HostAgent -->|File System<br/>Operations| FileSystem[VPS File System<br/>Read/Write]
+    HostAgent -->|Backup Service| BackupN8N[Backup n8n<br/>with GIT]
+    HostAgent -->|Documentation| SearchN8N[Search n8n<br/>Docs]
+    HostAgent -->|Node Schema| TypeScriptN8N[Search n8n Schemas<br/>TypeScript]
     
     %% Automation Layer
     GitHub[GitHub Actions] -->|CI/CD Pipeline| Runner[Self-hosted Runner]
@@ -65,7 +67,7 @@ graph TB
     class Caddy web
     class AIDev,HostAgent,Workflows app
     class N8N,Supabase,DBT,Browserless container
-    class FileSystem host
+    class BackupN8N,SearchN8N,TypeScriptN8N host
     class GitHub,Runner infra
     class Docker,Containers container
     class UFW security
