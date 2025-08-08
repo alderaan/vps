@@ -17,7 +17,7 @@ from host_agent.search import search_directory, get_files, SearchError
 async def test_search():
     """Test the search functionality locally."""
     # Update this path to match your local setup
-    BASE_PATH = "/Users/d.lucker/Code"
+    BASE_PATH = "/Users/d.lucker/Code/vps"
     
     print("=" * 60)
     print("Testing n8n Search Functionality")
@@ -47,13 +47,13 @@ async def test_search():
     except Exception as e:
         print(f"✗ Unexpected error: {e}")
     
-    # Test 2: Search in n8n-nodes-only
-    print("\n2. Testing search in n8n-nodes-only...")
+    # Test 2: Search in n8nio
+    print("\n2. Testing search in n8nio...")
     print("-" * 40)
     try:
         result = await search_directory(
             query="executeWorkflowTrigger",
-            directory="n8n-nodes-only",
+            directory="n8nio",
             max_results=5,
             context_lines=2,
             base_path=BASE_PATH
@@ -132,7 +132,7 @@ async def test_search():
     print("\nIf all tests passed, the search functionality is ready for deployment.")
     print("If any tests failed, check:")
     print("1. Ripgrep is installed (brew install ripgrep)")
-    print("2. The n8n-docs and n8n-nodes-only directories exist")
+    print("2. The n8n-docs and n8nio directories exist")
     print("3. The BASE_PATH is correct for your setup")
 
 

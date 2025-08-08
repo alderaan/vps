@@ -29,7 +29,7 @@ This guide helps you test the search functionality locally before deploying to t
 
 ### `check_environment.py`
 - ✅ Verifies ripgrep is installed
-- ✅ Checks n8n-docs and n8n-nodes-only directories exist  
+- ✅ Checks n8n-docs and n8nio directories exist  
 - ✅ Confirms Python dependencies are available
 - **Run this first** - fixes most common issues
 
@@ -51,7 +51,7 @@ All tests should pass with output like:
 ```
 ✓ Ripgrep 14.0.3 is installed
 ✓ /Users/d.lucker/Code/n8n-docs exists (1250 total files)
-✓ /Users/d.lucker/Code/n8n-nodes-only exists (5430 total files)
+✓ /Users/d.lucker/Code/n8nio exists (5430 total files)
 ✓ Found 45 matches
 ✓ Results in 12 files
 ✓ Path traversal correctly blocked
@@ -67,7 +67,7 @@ brew install ripgrep
 ### "Directory not found"
 Check that you have these directories:
 - `/Users/d.lucker/Code/n8n-docs`
-- `/Users/d.lucker/Code/n8n-nodes-only`
+- `/Users/d.lucker/Code/n8nio`
 
 ### "Cannot connect to host agent"
 Make sure the server is running:

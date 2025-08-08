@@ -27,11 +27,11 @@ def check_ripgrep():
 def check_directories():
     """Check if required directories exist."""
     print("Checking directories...")
-    base_path = Path("/Users/d.lucker/Code")
+    base_path = Path("/Users/d.lucker/Code/vps")
     
     dirs_to_check = [
         base_path / "n8n-docs",
-        base_path / "n8n-nodes-only"
+        base_path / "n8nio"
     ]
     
     all_exist = True
@@ -103,7 +103,7 @@ def main():
         print("\nCommon fixes:")
         print("- Install ripgrep: brew install ripgrep")
         print("- Install Python deps: uv sync")
-        print("- Check that n8n-docs and n8n-nodes-only directories exist")
+        print("- Check that n8n-docs and n8nio directories exist")
 
 if __name__ == "__main__":
     main()

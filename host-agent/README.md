@@ -86,7 +86,7 @@ Retrieve full content of multiple files from n8n directories.
 **Request Body:**
 ```json
 {
-  "directory": "n8n-nodes-only", 
+  "directory": "n8nio", 
   "files": ["path/to/file1.ts", "path/to/file2.md"]
 }
 ```

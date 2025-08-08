@@ -26,7 +26,7 @@ class SearchResult(BaseModel):
 class SearchRequest(BaseModel):
     """Request model for search endpoint."""
     query: str = Field(..., description="Search query term")
-    directory: Literal["n8n-docs", "n8n-nodes-only"] = Field(..., description="Directory to search in")
+    directory: Literal["n8n-docs", "n8nio"] = Field(..., description="Directory to search in")
     max_results: int = Field(50, description="Maximum number of results to return", ge=1, le=200)
     context_lines: int = Field(2, description="Number of context lines before/after match", ge=0, le=5)
 
@@ -40,7 +40,7 @@ class SearchResponse(BaseModel):
 
 class GetFilesRequest(BaseModel):
     """Request model for get_files endpoint."""
-    directory: Literal["n8n-docs", "n8n-nodes-only"] = Field(..., description="Directory to get files from")
+    directory: Literal["n8n-docs", "n8nio"] = Field(..., description="Directory to get files from")
     files: List[str] = Field(..., description="List of file paths to retrieve", min_items=1, max_items=20)
 
 
@@ -74,7 +74,7 @@ async def search_directory(
     
     Args:
         query: Search term
-        directory: Directory name (n8n-docs or n8n-nodes-only)
+        directory: Directory name (n8n-docs or n8nio)
         max_results: Maximum number of results
         context_lines: Number of context lines
         base_path: Base path for the VPS directory
@@ -86,7 +86,7 @@ async def search_directory(
         SearchError: If search operation fails
     """
     # Validate directory
-    if directory not in ["n8n-docs", "n8n-nodes-only"]:
+    if directory not in ["n8n-docs", "n8nio"]:
         raise SearchError(f"Invalid directory: {directory}")
     
     full_path = Path(base_path) / directory
@@ -204,7 +204,7 @@ async def get_files(
     Retrieve full content of specified files.
     
     Args:
-        directory: Directory name (n8n-docs or n8n-nodes-only)
+        directory: Directory name (n8n-docs or n8nio)
         files: List of file paths relative to directory
         base_path: Base path for the VPS directory
         
@@ -215,7 +215,7 @@ async def get_files(
         SearchError: If operation fails
     """
     # Validate directory
-    if directory not in ["n8n-docs", "n8n-nodes-only"]:
+    if directory not in ["n8n-docs", "n8nio"]:
         raise SearchError(f"Invalid directory: {directory}")
     
     full_base_path = Path(base_path) / directory

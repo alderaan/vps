@@ -100,7 +100,7 @@ async def run_n8n_backup(token: str = Depends(verify_token)):
 @app.post("/search", response_model=SearchResponse)
 async def search(request: SearchRequest, token: str = Depends(verify_token)):
     """
-    Search for content in n8n-docs or n8n-nodes-only directories using ripgrep.
+    Search for content in n8n-docs or n8nio directories using ripgrep.
     
     Args:
         request: Search parameters including query, directory, max_results, and context_lines
@@ -138,7 +138,7 @@ async def search(request: SearchRequest, token: str = Depends(verify_token)):
 @app.post("/get_files", response_model=GetFilesResponse)
 async def get_files_endpoint(request: GetFilesRequest, token: str = Depends(verify_token)):
     """
-    Retrieve full content of specified files from n8n-docs or n8n-nodes-only directories.
+    Retrieve full content of specified files from n8n-docs or n8nio directories.
     
     Args:
         request: Request with directory and list of file paths

@@ -95,12 +95,12 @@ async def main():
             print(f"  First file: {first_file['file']}")
             print(f"  Matches in first file: {len(first_file['matches'])}")
     
-    # Test 3: Search n8n-nodes-only
-    print("\n3. Testing search in n8n-nodes-only...")
+    # Test 3: Search n8nio
+    print("\n3. Testing search in n8nio...")
     print("-" * 40)
     search_data = {
         "query": "execute",
-        "directory": "n8n-nodes-only",
+        "directory": "n8nio",
         "max_results": 3,
         "context_lines": 0
     }
