@@ -229,8 +229,9 @@ async def n8n_update_workflow_json(
 ) -> Dict:
     """Update existing n8n workflow using JSON strings.
       1. Don't include pinData - This field is not allowed when updating workflows
-      2. Don't include callerPolicy in the settings - This is an additional property that's not permitted in the settings object
-      3. Never attempt to set dummy credentials yourself. This leads to errors. Omit credentials entirely.
+      2. Include the settings object in the json when updating.
+      3. Don't include callerPolicy in the settings - This is an additional property that's not permitted in the settings object
+      4. Never attempt to set dummy credentials yourself. This leads to errors. Omit credentials entirely.
 
     Args:
         workflow_id: ID of workflow to update
@@ -406,10 +407,7 @@ async def n8n_backup_workflows() -> Dict:
 
 # n8n documentation and TypeScript search tools
 async def _call_host_agent_search(
-    query: str,
-    directory: str,
-    max_results: int = 30,
-    context_lines: int = 2
+    query: str, directory: str, max_results: int = 30, context_lines: int = 2
 ) -> Dict:
     """Internal function to call HostAgent search endpoint."""
     logger.info(f"Searching for '{query}' in {directory} via HostAgent")
@@ -433,7 +431,7 @@ async def _call_host_agent_search(
                     "query": query,
                     "directory": directory,
                     "max_results": max_results,
-                    "context_lines": context_lines
+                    "context_lines": context_lines,
                 },
                 timeout=60,  # 1 minute timeout for search
             )
@@ -442,24 +440,27 @@ async def _call_host_agent_search(
                 logger.info("HostAgent search completed successfully")
                 return response.json()
             else:
-                logger.error(f"HostAgent search failed with status {response.status_code}")
+                logger.error(
+                    f"HostAgent search failed with status {response.status_code}"
+                )
                 error_detail = response.text
-                raise Exception(f"HostAgent API error ({response.status_code}): {error_detail}")
+                raise Exception(
+                    f"HostAgent API error ({response.status_code}): {error_detail}"
+                )
 
     except httpx.TimeoutException:
         raise Exception("HostAgent search request timed out after 60 seconds")
     except httpx.ConnectError:
-        raise Exception("Could not connect to HostAgent service at http://host.docker.internal:9000")
+        raise Exception(
+            "Could not connect to HostAgent service at http://host.docker.internal:9000"
+        )
     except Exception as e:
         if "HOST_AGENT_BEARER_TOKEN" in str(e):
             raise
         raise Exception(f"Unexpected error calling HostAgent: {str(e)}")
 
 
-async def _call_host_agent_get_files(
-    directory: str,
-    files: List[str]
-) -> Dict:
+async def _call_host_agent_get_files(directory: str, files: List[str]) -> Dict:
     """Internal function to call HostAgent get_files endpoint."""
     logger.info(f"Getting {len(files)} files from {directory} via HostAgent")
     try:
@@ -478,10 +479,7 @@ async def _call_host_agent_get_files(
                     "Authorization": f"Bearer {host_agent_token}",
                     "Content-Type": "application/json",
                 },
-                json={
-                    "directory": directory,
-                    "files": files
-                },
+                json={"directory": directory, "files": files},
                 timeout=120,  # 2 minute timeout for file retrieval
             )
 
@@ -489,14 +487,20 @@ async def _call_host_agent_get_files(
                 logger.info("HostAgent get_files completed successfully")
                 return response.json()
             else:
-                logger.error(f"HostAgent get_files failed with status {response.status_code}")
+                logger.error(
+                    f"HostAgent get_files failed with status {response.status_code}"
+                )
                 error_detail = response.text
-                raise Exception(f"HostAgent API error ({response.status_code}): {error_detail}")
+                raise Exception(
+                    f"HostAgent API error ({response.status_code}): {error_detail}"
+                )
 
     except httpx.TimeoutException:
         raise Exception("HostAgent get_files request timed out after 120 seconds")
     except httpx.ConnectError:
-        raise Exception("Could not connect to HostAgent service at http://host.docker.internal:9000")
+        raise Exception(
+            "Could not connect to HostAgent service at http://host.docker.internal:9000"
+        )
     except Exception as e:
         if "HOST_AGENT_BEARER_TOKEN" in str(e):
             raise
@@ -505,17 +509,15 @@ async def _call_host_agent_get_files(
 
 @mcp.tool
 async def n8n_search_docs(
-    query: str,
-    max_results: int = 30,
-    context_lines: int = 2
+    query: str, max_results: int = 30, context_lines: int = 2
 ) -> Dict:
     """Search n8n documentation for a query term.
-    
+
     Args:
         query: Search term to look for in n8n documentation
         max_results: Maximum number of results to return (default: 30, max: 200)
         context_lines: Number of context lines before/after match (default: 2, max: 5)
-        
+
     Returns:
         Dict with search results including file paths, matches, and context
     """
@@ -523,23 +525,21 @@ async def n8n_search_docs(
         query=query,
         directory="n8n-docs",
         max_results=max_results,
-        context_lines=context_lines
+        context_lines=context_lines,
     )
 
 
 @mcp.tool
 async def n8n_search_nodes(
-    query: str,
-    max_results: int = 30,
-    context_lines: int = 2
+    query: str, max_results: int = 30, context_lines: int = 2
 ) -> Dict:
     """Search n8n TypeScript node implementations for a query term.
-    
+
     Args:
         query: Search term to look for in TypeScript node implementations
         max_results: Maximum number of results to return (default: 30, max: 200)
         context_lines: Number of context lines before/after match (default: 2, max: 5)
-        
+
     Returns:
         Dict with search results including file paths, matches, and context
     """
@@ -547,34 +547,28 @@ async def n8n_search_nodes(
         query=query,
         directory="n8n-nodes-only",
         max_results=max_results,
-        context_lines=context_lines
+        context_lines=context_lines,
     )
 
 
 @mcp.tool
-async def n8n_get_files(
-    directory: str,
-    files: List[str]
-) -> Dict:
+async def n8n_get_files(directory: str, files: List[str]) -> Dict:
     """Retrieve full content of specified files from n8n-docs or n8n-nodes-only.
-    
+
     Args:
         directory: Either "n8n-docs" or "n8n-nodes-only"
         files: List of file paths relative to the directory (max 20 files)
-        
+
     Returns:
         Dict with file contents and any errors encountered
     """
     if directory not in ["n8n-docs", "n8n-nodes-only"]:
         raise ValueError("directory must be either 'n8n-docs' or 'n8n-nodes-only'")
-    
+
     if len(files) > 20:
         raise ValueError("Maximum 20 files can be retrieved at once")
-    
-    return await _call_host_agent_get_files(
-        directory=directory,
-        files=files
-    )
+
+    return await _call_host_agent_get_files(directory=directory, files=files)
 
 
 # n8n-workflows integration tools
