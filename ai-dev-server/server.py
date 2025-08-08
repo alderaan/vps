@@ -545,7 +545,7 @@ async def n8n_search_nodes(
     """
     return await _call_host_agent_search(
         query=query,
-        directory="n8n-nodes-only",
+        directory="n8nio",
         max_results=max_results,
         context_lines=context_lines,
     )
@@ -553,17 +553,17 @@ async def n8n_search_nodes(
 
 @mcp.tool
 async def n8n_get_files(directory: str, files: List[str]) -> Dict:
-    """Retrieve full content of specified files from n8n-docs or n8n-nodes-only.
+    """Retrieve full content of specified files from n8n-docs or n8nio.
 
     Args:
-        directory: Either "n8n-docs" or "n8n-nodes-only"
+        directory: Either "n8n-docs" or "n8nio"
         files: List of file paths relative to the directory (max 20 files)
 
     Returns:
         Dict with file contents and any errors encountered
     """
-    if directory not in ["n8n-docs", "n8n-nodes-only"]:
-        raise ValueError("directory must be either 'n8n-docs' or 'n8n-nodes-only'")
+    if directory not in ["n8n-docs", "n8nio"]:
+        raise ValueError("directory must be either 'n8n-docs' or 'n8nio'")
 
     if len(files) > 20:
         raise ValueError("Maximum 20 files can be retrieved at once")
