@@ -511,7 +511,11 @@ async def _call_host_agent_get_files(directory: str, files: List[str]) -> Dict:
 async def n8n_search_docs(
     query: str, max_results: int = 30, context_lines: int = 2
 ) -> Dict:
-    """Search n8n documentation for a query term.
+    """Search n8n documentation for general node information written for humans.
+    
+    This searches the official n8n documentation which explains how nodes work conceptually
+    but may lack some technical implementation details. Use this to understand node purpose,
+    basic configuration, and usage examples.
 
     Args:
         query: Search term to look for in n8n documentation
@@ -533,7 +537,11 @@ async def n8n_search_docs(
 async def n8n_search_nodes(
     query: str, max_results: int = 30, context_lines: int = 2
 ) -> Dict:
-    """Search n8n TypeScript node implementations for a query term.
+    """Search the official n8n TypeScript source code used to construct node JSON schemas.
+    
+    This searches the actual TypeScript implementation files that define how n8n nodes work.
+    Use this to understand the correct JSON schema structure, available parameters, 
+    validation rules, and implementation details for building workflows programmatically.
 
     Args:
         query: Search term to look for in TypeScript node implementations
@@ -584,7 +592,12 @@ async def search_workflow_templates(
     page: int = 1,
     per_page: int = 20,
 ) -> Dict:
-    """Search n8n workflow templates from the repository.
+    """Search a third-party collection of publicly available n8n workflow templates.
+    
+    This searches through community-contributed workflow examples to understand how 
+    n8n nodes are implemented in real-world use cases. Templates show practical 
+    implementation patterns but may use outdated node versions - the JSON might 
+    still work if the underlying schemas haven't changed significantly.
 
     Args:
         query: Search text (searches names, descriptions, integrations)
