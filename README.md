@@ -73,34 +73,6 @@ graph TB
     class UFW security
 ```
 
-## Capabilities
-
-This VPS infrastructure provides powerful AI and automation capabilities:
-
-### AI Agent Integration
-- **Claude AI Control**: Complete n8n workflow management via MCP protocol
-- **Documentation Search**: Fast ripgrep-powered search across n8n docs and TypeScript source code
-- **Template Repository**: 2,000+ searchable n8n workflow templates with metadata
-- **Intelligent Workflow Creation**: AI can read docs, search examples, and build workflows
-
-### Workflow Automation
-- **n8n Platform**: Full workflow automation with 400+ integrations
-- **AI-Enhanced Workflows**: LangChain, OpenAI, and custom AI nodes
-- **Template Library**: Pre-built workflows for common automation patterns
-- **Version Control**: Automated Git backup of all workflow configurations
-
-### Development & Data Engineering
-- **Complete Backend**: Supabase with PostgreSQL, Auth, Storage, Edge Functions
-- **Data Transformation**: DBT for analytics and data pipeline management
-- **Web Automation**: Browserless Chrome for scraping and testing
-- **CI/CD Pipeline**: GitHub Actions with self-hosted runner
-
-### Infrastructure & Security
-- **Containerized Architecture**: Docker Compose orchestration for all services
-- **Secure Networking**: Firewall protection with localhost-only service binding
-- **SSL/TLS**: Automatic certificate management via Caddy reverse proxy
-- **Backup & Recovery**: Automated backups with Git integration
-
 ## Docker Networking
 
 ### Network Architecture
