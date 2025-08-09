@@ -24,32 +24,28 @@ This VPS setup provides a development and production environment with the follow
 ```mermaid
 graph TB
     %% Client Layer
-    Client[Claude Code] -->|MCP Protocol<br/>Bearer Auth| Caddy[Caddy Reverse Proxy<br/>SSL/TLS]
+    Client[Claude Code] -->|MCP/HTTP<br/>Bearer Auth| Caddy[Caddy Reverse Proxy<br/>SSL/TLS]
     
     %% Web Layer
-    Caddy -->|HTTP| AIDev[AI Dev Server<br/>FastAPI + FastMCP]
+    Caddy -->|MCP/HTTP| AIDev[AI Dev Server<br/>FastAPI + FastMCP]
     
     %% Application Layer
-    AIDev -->|HTTP| N8N[n8n]
-    AIDev -->|HTTP| HostAgent[HostAgent<br/>Host Service]
-    AIDev -->|HTTP| Workflows[n8n-workflows<br/>Template Search]
+    AIDev -->|n8n API<br/>HTTP| N8N[n8n<br/>Workflow Automation]
+    AIDev -->|HTTP| HostAgent[HostAgent<br/>Privileged Operations]
+    AIDev -->|HTTP| Workflows[Search n8n<br/>Community Workflows]
     
     %% Host Services
-    HostAgent -->|Backup Service| BackupN8N[Backup n8n<br/>with GIT]
-    HostAgent -->|Documentation| SearchN8N[Search n8n<br/>Docs]
-    HostAgent -->|Node Schema| TypeScriptN8N[Search n8n Schemas<br/>TypeScript]
+    HostAgent -->|bash/git| BackupN8N[Backup n8n<br/>workflows]
+    HostAgent -->|ripgrep| SearchN8N[Search n8n<br/>Docs]
+    HostAgent -->|ripgrep| TypeScriptN8N[Search n8n Schemas<br/>TypeScript]
     
     %% Automation Layer
-    GitHub[GitHub Actions] -->|CI/CD Pipeline| Runner[Self-hosted Runner]
-    Runner -->|Docker Commands| Docker[Docker Engine]
-    
-    %% Container Management
-    Docker -->|Container Orchestration| Containers{Docker Containers}
-    Containers --> AIDev
-    Containers --> N8N
-    Containers --> Supabase
-    Containers --> DBT[DBT]
-    Containers --> Browserless[Browserless]
+    GitHub[GitHub Actions] -->|Webhook| Runner[Self-hosted Runner<br/>Docker Deploy]
+    Runner --> AIDev
+    Runner --> N8N
+    Runner --> Supabase[Supabase<br/>PostgreSQL]
+    Runner --> DBT[DBT<br/>Data Transformation]
+    Runner --> Browserless[Browserless<br/>Headless Chrome]
     
     %% Security Layer (standalone boxes)
     UFW[UFW Firewall<br/>Network Protection]
@@ -69,7 +65,6 @@ graph TB
     class N8N,Supabase,DBT,Browserless container
     class BackupN8N,SearchN8N,TypeScriptN8N host
     class GitHub,Runner infra
-    class Docker,Containers container
     class UFW security
 ```
 
