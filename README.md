@@ -68,6 +68,8 @@ graph TB
     class UFW security
 ```
 
+*Note: MCP Server refers to the AI Dev Server service in this repository.*
+
 ## Docker Networking
 
 ### Network Architecture
