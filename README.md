@@ -24,7 +24,7 @@ This VPS setup provides a development and production environment with the follow
 ```mermaid
 graph TB
     %% Client Layer
-    Client[Claude AI Client] -->|MCP Protocol<br/>Bearer Auth| Caddy[Caddy Reverse Proxy<br/>SSL/TLS]
+    Client[Claude Code] -->|MCP Protocol<br/>Bearer Auth| Caddy[Caddy Reverse Proxy<br/>SSL/TLS]
     
     %% Web Layer
     Caddy -->|HTTP| AIDev[AI Dev Server<br/>FastAPI + FastMCP]
