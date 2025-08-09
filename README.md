@@ -24,7 +24,7 @@ This VPS setup provides a development and production environment with the follow
 ```mermaid
 graph TB
     %% Client Layer
-    Client[Claude Code] -->|MCP/HTTP<br/>Bearer Auth| Caddy[Caddy Reverse Proxy<br/>SSL/TLS]
+    Client[Claude Code] -->|MCP/HTTP<br/>Bearer Auth| Caddy[Caddy<br/>Reverse Proxy]
     
     %% Web Layer
     Caddy -->|MCP/HTTP| AIDev[MCP Server<br/>Tool Provider]
@@ -32,12 +32,12 @@ graph TB
     %% Application Layer
     AIDev -->|n8n API<br/>HTTP| N8N[n8n<br/>Workflow Automation]
     AIDev -->|HTTP| HostAgent[HostAgent<br/>Privileged Operations]
-    AIDev -->|HTTP| Workflows[Search n8n<br/>Community Workflows]
+    AIDev -->|HTTP| Workflows[Template Server<br/>Search 2000+ community workflows]
     
     %% Host Services
     HostAgent -->|bash/git| BackupN8N[Backup n8n<br/>workflows]
-    HostAgent -->|ripgrep| SearchN8N[Search n8n<br/>Docs]
-    HostAgent -->|ripgrep| TypeScriptN8N[Search n8n Schemas<br/>TypeScript]
+    HostAgent -->|search| SearchN8N[n8n Documentation]
+    HostAgent -->|search| TypeScriptN8N[n8n Source Code<br/>node schemas]
     
     %% Automation Layer
     GitHub[GitHub Actions] -->|Webhook| Runner[Self-hosted Runner<br/>Docker Deploy]
