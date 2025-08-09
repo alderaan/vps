@@ -27,7 +27,7 @@ graph TB
     Client[Claude Code] -->|MCP/HTTP<br/>Bearer Auth| Caddy[Caddy Reverse Proxy<br/>SSL/TLS]
     
     %% Web Layer
-    Caddy -->|MCP/HTTP| AIDev[AI Dev Server<br/>FastAPI + FastMCP]
+    Caddy -->|MCP/HTTP| AIDev[MCP Server<br/>Tool Provider]
     
     %% Application Layer
     AIDev -->|n8n API<br/>HTTP| N8N[n8n<br/>Workflow Automation]
