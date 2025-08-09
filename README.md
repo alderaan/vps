@@ -30,14 +30,14 @@ graph TB
     Caddy -->|MCP/HTTP| AIDev[MCP Server<br/>Tool Provider]
     
     %% Application Layer
-    AIDev -->|n8n API<br/>HTTP| N8N[n8n<br/>Workflow Automation]
+    AIDev -->|Create/Read/Update/Delete<br/>N8N API| N8N[N8N<br/>Workflow Automation]
     AIDev -->|HTTP| HostAgent[HostAgent<br/>Privileged Operations]
-    AIDev -->|HTTP| Workflows[Template Server<br/>Search 2000+ community workflows]
+    AIDev -->|Search| Workflows[Template Server<br/>2000+ Community Workflows]
     
     %% Host Services
-    HostAgent -->|bash/git| BackupN8N[Backup n8n<br/>workflows]
-    HostAgent -->|search| SearchN8N[n8n Documentation]
-    HostAgent -->|search| TypeScriptN8N[n8n Source Code<br/>node schemas]
+    HostAgent -->|Bash/Git| BackupN8N[Backup N8N<br/>Workflows]
+    HostAgent -->|Search| SearchN8N[N8N Documentation<br/>General Node Descriptions]
+    HostAgent -->|Search| TypeScriptN8N[N8N Source Code<br/>TypeScript Node Schemas]
     
     %% Automation Layer
     GitHub[GitHub Actions] -->|Webhook| Runner[Self-hosted Runner<br/>Docker Deploy]
