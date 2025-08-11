@@ -176,7 +176,9 @@ async def n8n_create_workflow_json(
     connections_json: str,
     settings_json: Optional[str] = None,
 ) -> Dict:
-    """Create new n8n workflow using JSON strings.
+    """⚠️ REQUIRES USER CONFIRMATION - DO NOT EXECUTE WITHOUT ASKING ⚠️
+
+    Create new n8n workflow using JSON strings.
 
     CRITICAL INSTRUCTION: Never attempt to set dummy credentials yourself. This leads to errors. Omit credentials entirely when creating new workflows.
     CRITICAL INSTRUCTION: Always propose your solution and ask for confirmation from user before writing the JSON and creating the workflow.
@@ -222,7 +224,9 @@ async def n8n_update_workflow_json(
     connections_json: Optional[str] = None,
     settings_json: Optional[str] = None,
 ) -> Dict:
-    """Update existing n8n workflow using JSON strings.
+    """⚠️ REQUIRES USER CONFIRMATION - DO NOT EXECUTE WITHOUT ASKING ⚠️
+
+    Update existing n8n workflow using JSON strings.
       1. CRITICAL INSTRUCTION: Always propose your solution and ask for confirmation from user first before writing the JSON and updating the workflow in n8n.
       2. Don't include pinData - This field is not allowed when updating workflows
       3. Include the settings object in the json when updating.
