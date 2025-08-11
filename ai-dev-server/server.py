@@ -115,13 +115,7 @@ class N8nClient:
 
 
 # Create FastMCP server
-mcp = FastMCP("Hello World Development Server")
-
-
-@mcp.tool
-def hello_world() -> str:
-    """Returns a simple Hello World greeting."""
-    return "Hello World from FastMCP!"
+mcp = FastMCP("David's FastMCP Server")
 
 
 @mcp.tool
@@ -184,7 +178,7 @@ async def n8n_create_workflow_json(
 ) -> Dict:
     """Create new n8n workflow using JSON strings.
 
-    Never attempt to set dummy credentials yourself. This leads to errors. Omit credentials entirely.
+    Never attempt to set dummy credentials yourself. This leads to errors. Omit credentials entirely when creating new workflows.
 
     Args:
         name: Workflow name
@@ -231,7 +225,7 @@ async def n8n_update_workflow_json(
       1. Don't include pinData - This field is not allowed when updating workflows
       2. Include the settings object in the json when updating.
       3. Don't include callerPolicy in the settings - This is an additional property that's not permitted in the settings object
-      4. Never attempt to set dummy credentials yourself. This leads to errors. Omit credentials entirely.
+      4. Never attempt to set new dummy credentials yourself. But always include credentials that already existed before your update.
 
     Args:
         workflow_id: ID of workflow to update
@@ -512,7 +506,7 @@ async def n8n_search_docs(
     query: str, max_results: int = 30, context_lines: int = 2
 ) -> Dict:
     """Search n8n documentation for general node information written for humans.
-    
+
     This searches the official n8n documentation which explains how nodes work conceptually
     but may lack some technical implementation details. Use this to understand node purpose,
     basic configuration, and usage examples.
@@ -538,9 +532,9 @@ async def n8n_search_nodes(
     query: str, max_results: int = 30, context_lines: int = 2
 ) -> Dict:
     """Search the official n8n TypeScript source code used to construct node JSON schemas.
-    
+
     This searches the actual TypeScript implementation files that define how n8n nodes work.
-    Use this to understand the correct JSON schema structure, available parameters, 
+    Use this to understand the correct JSON schema structure, available parameters,
     validation rules, and implementation details for building workflows programmatically.
 
     Args:
@@ -593,10 +587,10 @@ async def search_workflow_templates(
     per_page: int = 20,
 ) -> Dict:
     """Search a third-party collection of publicly available n8n workflow templates.
-    
-    This searches through community-contributed workflow examples to understand how 
-    n8n nodes are implemented in real-world use cases. Templates show practical 
-    implementation patterns but may use outdated node versions - the JSON might 
+
+    This searches through community-contributed workflow examples to understand how
+    n8n nodes are implemented in real-world use cases. Templates show practical
+    implementation patterns but may use outdated node versions - the JSON might
     still work if the underlying schemas haven't changed significantly.
 
     Args:
