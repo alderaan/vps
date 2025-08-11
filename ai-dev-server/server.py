@@ -229,7 +229,7 @@ async def n8n_update_workflow_json(
       3. Don't include callerPolicy in the settings - This is an additional property that's not permitted in the settings object
       4. Never attempt to set new dummy credentials yourself. But always include credentials that already existed before your update.
 
-    CONFIRMATION REQUIRED: This tool requires user confirmation to execute. 
+    CONFIRMATION REQUIRED: This tool requires user confirmation to execute.
     First call with confirmed=false (default) to preview changes, then call again with confirmed=true to execute.
 
     Args:
@@ -262,7 +262,7 @@ async def n8n_update_workflow_json(
     if not confirmed:
         return {
             "confirmation_required": True,
-            "message": "PREVIEW ONLY - Workflow update not executed. Call again with confirmed=true to execute.",
+            "message": "PREVIEW ONLY - Workflow update not executed. Inform user of proposed changes first. If user agrees, call again with confirmed=true to execute.",
             "preview": {
                 "workflow_id": workflow_id,
                 "current_name": current.get("name"),
@@ -274,14 +274,14 @@ async def n8n_update_workflow_json(
                     "nodes_changed": nodes_json is not None,
                     "connections_changed": connections_json is not None,
                     "settings_changed": settings_json is not None,
-                }
+                },
             },
-            "to_execute": "Call this tool again with the same parameters and confirmed=true"
+            "to_execute": "Call this tool again with the same parameters and confirmed=true",
         }
 
     # Confirmed - proceed with actual update
     logger.info(f"CONFIRMED: Proceeding with workflow update for {workflow_id}")
-    
+
     # Run backup before making any changes
     logger.info(f"Running backup before updating workflow {workflow_id}")
     backup_before_result = await _run_n8n_backup()
