@@ -179,6 +179,7 @@ async def n8n_create_workflow_json(
     """Create new n8n workflow using JSON strings.
 
     Never attempt to set dummy credentials yourself. This leads to errors. Omit credentials entirely when creating new workflows.
+    Always propose your solution and ask for confirmation from user before creating the workflow on n8n.
 
     Args:
         name: Workflow name
@@ -226,6 +227,7 @@ async def n8n_update_workflow_json(
       2. Include the settings object in the json when updating.
       3. Don't include callerPolicy in the settings - This is an additional property that's not permitted in the settings object
       4. Never attempt to set new dummy credentials yourself. But always include credentials that already existed before your update.
+      5. Always propose your solution and ask for confirmation from user before doing the actual update on n8n.
 
     Args:
         workflow_id: ID of workflow to update
