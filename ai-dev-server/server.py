@@ -220,6 +220,7 @@ async def n8n_update_workflow_json(
     nodes_json: Optional[str] = None,
     connections_json: Optional[str] = None,
     settings_json: Optional[str] = None,
+    confirmed: bool = False,
 ) -> Dict:
     """Update existing n8n workflow using JSON strings.
 
@@ -228,6 +229,8 @@ async def n8n_update_workflow_json(
       3. Don't include callerPolicy in the settings - This is an additional property that's not permitted in the settings object
       4. Never attempt to set new dummy credentials yourself. But always include credentials that already existed before your update.
 
+    CONFIRMATION REQUIRED: This tool requires user confirmation to execute. 
+    First call with confirmed=false (default) to preview changes, then call again with confirmed=true to execute.
 
     Args:
         workflow_id: ID of workflow to update
@@ -235,11 +238,8 @@ async def n8n_update_workflow_json(
         nodes_json: New nodes list as JSON string (optional)
         connections_json: New connections as JSON string (optional)
         settings_json: New settings as JSON string (optional)
+        confirmed: Set to true to actually execute the update (default: false for preview only)
     """
-    # First, run backup before making any changes
-    logger.info(f"Running backup before updating workflow {workflow_id}")
-    backup_before_result = await _run_n8n_backup()
-
     client = _get_n8n_client()
 
     # Get current workflow to merge updates
@@ -257,6 +257,34 @@ async def n8n_update_workflow_json(
             json.loads(settings_json) if settings_json else current.get("settings", {})
         ),
     }
+
+    # If not confirmed, return preview only
+    if not confirmed:
+        return {
+            "confirmation_required": True,
+            "message": "PREVIEW ONLY - Workflow update not executed. Call again with confirmed=true to execute.",
+            "preview": {
+                "workflow_id": workflow_id,
+                "current_name": current.get("name"),
+                "new_name": workflow_data["name"],
+                "current_node_count": len(current.get("nodes", [])),
+                "new_node_count": len(workflow_data["nodes"]),
+                "changes_detected": {
+                    "name_changed": workflow_data["name"] != current.get("name"),
+                    "nodes_changed": nodes_json is not None,
+                    "connections_changed": connections_json is not None,
+                    "settings_changed": settings_json is not None,
+                }
+            },
+            "to_execute": "Call this tool again with the same parameters and confirmed=true"
+        }
+
+    # Confirmed - proceed with actual update
+    logger.info(f"CONFIRMED: Proceeding with workflow update for {workflow_id}")
+    
+    # Run backup before making any changes
+    logger.info(f"Running backup before updating workflow {workflow_id}")
+    backup_before_result = await _run_n8n_backup()
 
     # Save JSON to disk for debugging
     debug_dir = Path("/tmp/n8n-debug")
@@ -281,10 +309,11 @@ async def n8n_update_workflow_json(
 
         # Return combined result with both backup and update status
         return {
+            "confirmed_execution": True,
             "backup_before_status": backup_before_result,
             "update_result": update_result,
             "backup_after_status": backup_after_result,
-            "message": f"Pre-update backup: {'success' if backup_before_result.get('success') else 'failed'}, workflow updated successfully, post-update backup: {'success' if backup_after_result.get('success') else 'failed'}",
+            "message": f"WORKFLOW UPDATED: Pre-update backup: {'success' if backup_before_result.get('success') else 'failed'}, workflow updated successfully, post-update backup: {'success' if backup_after_result.get('success') else 'failed'}",
             "debug_file": str(debug_file),
         }
     except Exception as e:
