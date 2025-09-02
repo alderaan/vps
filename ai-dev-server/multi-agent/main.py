@@ -5,6 +5,16 @@ Demonstrates orchestrator routing requests to specialist agents
 """
 
 import os
+import sys
+from pathlib import Path
+
+# Add parent directory to path to find .env file
+sys.path.append(str(Path(__file__).parent.parent))
+
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
+
 from workflow import MultiAgentWorkflow
 
 
@@ -15,6 +25,14 @@ def main():
         print("Error: GEMINI_API_KEY environment variable not set")
         print("Please add 'export GEMINI_API_KEY=your-api-key' to your ~/.zshrc")
         return
+    
+    # Check LangSmith tracing
+    if os.getenv("LANGSMITH_TRACING") == "true":
+        print("📊 LangSmith tracing enabled")
+        print(f"   Project: {os.getenv('LANGSMITH_PROJECT', 'default')}")
+        print(f"   View traces at: https://smith.langchain.com/o/f1106b854f/projects/p/{os.getenv('LANGSMITH_PROJECT', 'default')}")
+    else:
+        print("📊 LangSmith tracing disabled")
     
     # Initialize workflow
     print("🚀 Initializing Multi-Agent System...")

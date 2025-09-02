@@ -19,6 +19,8 @@ dependencies = [
     { name = "langchain-anthropic" },
     { name = "langchain-google-genai" },
     { name = "langgraph" },
+    { name = "langsmith" },
+    { name = "python-dotenv" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -31,6 +33,8 @@ requires-dist = [
     { name = "langchain-anthropic", specifier = ">=0.3.19" },
     { name = "langchain-google-genai", specifier = ">=2.1.10" },
     { name = "langgraph", specifier = ">=0.6.6" },
+    { name = "langsmith", specifier = ">=0.4.21" },
+    { name = "python-dotenv", specifier = ">=1.1.1" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30.0" },
 ]
 

@@ -12,4 +12,6 @@ dependencies = [
     "langchain-anthropic>=0.3.19",
     "langchain-google-genai>=2.1.10",
     "langgraph>=0.6.6",
+    "langsmith>=0.4.21",
+    "python-dotenv>=1.1.1",
 ]
