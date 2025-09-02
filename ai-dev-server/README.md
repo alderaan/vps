@@ -10,7 +10,7 @@ AI Dev Server integrates FastAPI and FastMCP to provide:
 - n8n workflow management capabilities
 - n8n documentation and code search capabilities
 - Workflow template repository integration
-- Multi-Agent capabilities are planned
+- Multi-Agent LangGraph system with orchestrator and specialist agents
 
 ## How Claude AI Controls n8n Through MCP
 
@@ -133,12 +133,47 @@ Required environment variables:
 MCP_BEARER_TOKEN=your-secure-token        # Required for MCP authentication
 
 # n8n Configuration
-N8N_BASE_URL=http://n8n:5678             # n8n API endpoint (default: http://localhost:5678)
+N8N_BASE_URL=https://n8n.correlion.ai     # n8n API endpoint
 N8N_API_KEY=your-n8n-api-key            # n8n API key for authentication
 
 # HostAgent Integration
 HOST_AGENT_BEARER_TOKEN=your-token       # Bearer token for HostAgent API calls
+
+# LangChain/LangSmith Configuration (for multi-agent system)
+GEMINI_API_KEY=your-gemini-api-key      # Google Gemini API key for LLM
+LANGSMITH_TRACING=true                   # Enable LangSmith tracing
+LANGSMITH_ENDPOINT=https://api.smith.langchain.com  # LangSmith API endpoint
+LANGSMITH_API_KEY=your-langsmith-key    # LangSmith API key
+LANGSMITH_PROJECT=ai-dev-server         # Project name in LangSmith
 ```
+
+## Multi-Agent System
+
+The `multi-agent/` directory contains a LangGraph-based multi-agent system with:
+
+- **Orchestrator Agent**: Routes requests to appropriate specialist agents
+- **Math Specialist Agent**: Handles mathematical computations and problems
+- **LangGraph Workflow**: Manages agent coordination and state
+
+### Running the Multi-Agent System
+
+```bash
+# Navigate to multi-agent directory
+cd multi-agent
+
+# Run in interactive mode
+uv run main.py
+# Choose option 1 for interactive chat
+
+# Run demo mode with test cases
+uv run main.py
+# Choose option 2 for demo
+
+# View traces in LangSmith
+# Go to: https://smith.langchain.com/o/f1106b854f/projects/p/ai-dev-server
+```
+
+The system automatically traces all LLM interactions to LangSmith when environment variables are configured.
 
 ## Quick Start
 
