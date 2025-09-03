@@ -7,6 +7,7 @@ class RealtimeVoiceAssistant {
         this.audioContext = null;
         this.audioQueue = [];
         this.isAuthenticated = false;
+        this.audioScheduleTime = 0;
         
         this.initializeElements();
         this.setupEventListeners();
@@ -146,7 +147,7 @@ class RealtimeVoiceAssistant {
     handleWebSocketMessage(message) {
         switch (message.type) {
             case 'audio':
-                // Play received audio immediately
+                // Play received audio immediately (even during recording)
                 this.playAudioChunk(message.data);
                 break;
             case 'text':
@@ -163,30 +164,48 @@ class RealtimeVoiceAssistant {
 
     async playAudioChunk(audioDataB64) {
         try {
-            // Decode base64 audio data
-            const audioData = atob(audioDataB64);
-            
-            // Convert to Int16 array (PCM format from Gemini)
-            const pcmData = new Int16Array(audioData.length / 2);
-            for (let i = 0; i < pcmData.length; i++) {
-                pcmData[i] = (audioData.charCodeAt(i * 2 + 1) << 8) | audioData.charCodeAt(i * 2);
+            // Server sends raw PCM from Gemini → base64 encode → WebSocket
+            // We need to decode base64 and play as 24kHz 16-bit PCM directly
+            const binaryString = atob(audioDataB64);
+            const audioBytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                audioBytes[i] = binaryString.charCodeAt(i);
             }
             
-            // Create AudioBuffer with correct sample rate (24kHz from Gemini)
-            const sampleRate = 24000; // Gemini's output sample rate
-            const audioBuffer = this.audioContext.createBuffer(1, pcmData.length, sampleRate);
+            // Gemini sends 16-bit PCM at 24kHz - convert to Int16Array
+            const pcmSamples = new Int16Array(audioBytes.buffer);
+            
+            // Create Web Audio buffer at 24kHz (Gemini's output rate)
+            const sampleRate = 24000;
+            const audioBuffer = this.audioContext.createBuffer(1, pcmSamples.length, sampleRate);
             const channelData = audioBuffer.getChannelData(0);
             
-            // Convert Int16 to Float32 for Web Audio API
-            for (let i = 0; i < pcmData.length; i++) {
-                channelData[i] = pcmData[i] / 32768.0; // Normalize to -1.0 to 1.0
+            // Convert 16-bit PCM to float32 for Web Audio (-1.0 to 1.0)
+            for (let i = 0; i < pcmSamples.length; i++) {
+                channelData[i] = pcmSamples[i] / 32768.0;
             }
             
-            // Play the audio
+            // Play immediately for real-time conversation
+            const currentTime = this.audioContext.currentTime;
+            // Small buffer to avoid audio glitches, but play ASAP
+            const startTime = Math.max(currentTime + 0.01, this.audioScheduleTime);
+            
+            console.log(`🔊 Playing ${pcmSamples.length} samples immediately at ${startTime.toFixed(3)}s`);
+            
+            // Play with minimal scheduling delay
             const source = this.audioContext.createBufferSource();
             source.buffer = audioBuffer;
             source.connect(this.audioContext.destination);
-            source.start();
+            source.start(startTime);
+            
+            // Only update schedule time if we're ahead, otherwise reset to now
+            if (this.audioScheduleTime > currentTime + 0.5) {
+                // Reset if we're getting too far ahead (more than 500ms)
+                this.audioScheduleTime = currentTime + audioBuffer.duration;
+            } else {
+                this.audioScheduleTime = startTime + audioBuffer.duration;
+            }
+            
         } catch (error) {
             console.error('Error playing audio:', error);
         }
@@ -194,18 +213,9 @@ class RealtimeVoiceAssistant {
 
 
     clearAudioQueue() {
-        // Clear any pending audio to prevent hanging (Google's approach)
-        // Stop any currently playing audio
-        try {
-            if (this.audioContext && this.audioContext.state === 'running') {
-                // This helps prevent audio hanging by resetting the audio context state
-                this.audioContext.suspend().then(() => {
-                    this.audioContext.resume();
-                });
-            }
-        } catch (error) {
-            console.log('Audio queue clear completed');
-        }
+        // Reset audio scheduling for turn completion
+        this.audioScheduleTime = this.audioContext ? this.audioContext.currentTime : 0;
+        console.log('🔄 Audio queue cleared, scheduling reset');
     }
 
     toggleRecording() {
@@ -256,7 +266,7 @@ class RealtimeVoiceAssistant {
             };
             
             source.connect(this.scriptProcessor);
-            this.scriptProcessor.connect(this.audioContext.destination);
+            // Don't connect to destination to avoid feedback - just process audio
             
             this.isRecording = true;
             this.updateButtonState();
@@ -332,12 +342,12 @@ class RealtimeVoiceAssistant {
         } else if (this.isRecording) {
             this.recordButton.disabled = false;
             this.recordButton.classList.add('recording');
-            this.buttonText.textContent = 'Speaking...';
+            this.buttonText.textContent = 'End Conversation';
             this.recordingStatus.classList.remove('hidden');
         } else {
             this.recordButton.disabled = false;
             this.recordButton.classList.remove('recording');
-            this.buttonText.textContent = 'Hold to Talk';
+            this.buttonText.textContent = 'Start Conversation';
             this.recordingStatus.classList.add('hidden');
         }
     }

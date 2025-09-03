@@ -1197,19 +1197,26 @@ async def voice_realtime_websocket(websocket: WebSocket):
                     async for message in websocket.iter_json():
                         logger.info(f"Received message from browser: type={message.get('type', 'unknown')}")
                         if message["type"] == "audio":
-                            # Send audio data to Gemini Live - Use exact Google pattern
+                            # Send audio data to Gemini Live - Correct 2025 API
                             audio_data = base64.b64decode(message["data"])
                             logger.info(f"Decoded audio data: {len(audio_data)} bytes")
-                            # Send PCM audio exactly like Google's working example
-                            await live_session.send(input={"data": audio_data, "mime_type": "audio/pcm"})
+                            # Use correct send_realtime_input syntax with types.Blob
+                            await live_session.send_realtime_input(
+                                audio=types.Blob(data=audio_data, mime_type="audio/pcm;rate=16000")
+                            )
                             logger.info("Audio data sent to Gemini Live")
                         elif message["type"] == "text":
-                            # Send text input to Gemini Live - Google's approach
-                            await live_session.send(input=message["text"], end_of_turn=True)
+                            # Send text input to Gemini Live - Correct API
+                            await live_session.send_client_content(
+                                turns=[{
+                                    "role": "user",
+                                    "parts": [{"text": message["text"]}]
+                                }]
+                            )
                             logger.info(f"Text sent to Gemini Live: {message['text']}")
                         elif message["type"] == "end_turn":
-                            # Signal end of turn to Gemini Live - Google's approach
-                            await live_session.send(input="", end_of_turn=True)
+                            # Signal end of turn to Gemini Live - Use text realtime input
+                            await live_session.send_realtime_input(text="")
                             logger.info("End of turn signal sent to Gemini Live")
                 except WebSocketDisconnect:
                     logger.info("Client WebSocket disconnected")
