@@ -155,12 +155,11 @@ async def chat_completions_endpoint(
     through the multi-agent LangGraph system.
     """
     
-    # Check if streaming is requested (not supported yet)
+    # For now, ignore streaming requests and always return non-streaming
+    # ElevenLabs sends stream=True but can handle non-streaming responses
     if request.stream:
-        raise HTTPException(
-            status_code=501,
-            detail="Streaming not yet implemented"
-        )
+        logger.info("Streaming requested but returning non-streaming response")
+        request.stream = False  # Override to false
     
     # Process the request
     response = await adapter.process_chat_completion(request)
