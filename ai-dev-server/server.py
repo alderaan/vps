@@ -814,12 +814,11 @@ async def authenticate(credentials: dict):
 @app.post("/v1/chat/completions", response_model=ChatCompletionResponse)
 async def openai_chat_completions(request: ChatCompletionRequest):
     """OpenAI-compatible chat completions endpoint for 11Labs integration."""
-    logger.info(f"Received /v1/chat/completions request: {request}")
-    logger.info(f"Request model: {request.model}")
-    logger.info(f"Request messages: {request.messages}")
+    # Log only essential info - not the full messages
+    logger.info(f"Chat completion request - Model: {request.model}, Stream: {request.stream}")
     try:
         result = await chat_completions_endpoint(request)
-        logger.info(f"Response successful: {result}")
+        logger.info("Chat completion successful")
         return result
     except Exception as e:
         logger.error(f"Error in chat_completions: {e}", exc_info=True)
