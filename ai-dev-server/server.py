@@ -1226,42 +1226,37 @@ async def voice_realtime_websocket(websocket: WebSocket):
                     logger.error(traceback.format_exc())
             
             async def handle_gemini_responses():
-                """Forward responses from Gemini to browser - Correct Google's approach"""
+                """Stream responses from Gemini to browser in real-time"""
                 try:
-                    while True:
-                        # Get turn from session - this is the correct Google pattern
-                        turn = live_session.receive()
-                        logger.info("Received turn from Gemini, processing responses...")
+                    # Stream responses immediately as they arrive
+                    async for response in live_session.receive():
+                        logger.info(f"GOT RESPONSE FROM GEMINI: has_data={bool(response.data)}, has_text={bool(response.text)}")
                         
-                        response_count = 0
-                        async for response in turn:
-                            response_count += 1
-                            logger.info(f"Processing response #{response_count} from Gemini")
+                        if data := response.data:
+                            # Send audio data to browser IMMEDIATELY
+                            audio_b64 = base64.b64encode(data).decode()
+                            await websocket.send_json({
+                                "type": "audio",
+                                "data": audio_b64,
+                                "mime_type": "audio/pcm"
+                            })
+                            logger.info(f"SENT {len(data)} bytes of audio to browser")
                             
-                            if data := response.data:
-                                # Send audio data to browser
-                                audio_b64 = base64.b64encode(data).decode()
-                                await websocket.send_json({
-                                    "type": "audio",
-                                    "data": audio_b64,
-                                    "mime_type": "audio/pcm"
-                                })
-                                logger.info(f"Sent {len(data)} bytes of audio to browser")
-                            if text := response.text:
-                                # Send text response to browser
-                                await websocket.send_json({
-                                    "type": "text", 
-                                    "text": text
-                                })
-                                logger.info(f"Sent text to browser: {text[:50]}...")
+                        if text := response.text:
+                            # Send text response to browser IMMEDIATELY
+                            await websocket.send_json({
+                                "type": "text", 
+                                "text": text
+                            })
+                            logger.info(f"SENT text to browser: {text[:50]}")
                         
-                        # Google's fix: Signal turn completion to prevent hanging
-                        # This tells the browser that the AI finished speaking
-                        await websocket.send_json({
-                            "type": "turn_complete"
-                        })
-                        logger.info(f"Turn complete - AI finished speaking (processed {response_count} responses)")
-                        
+                        # Check if this response indicates turn completion
+                        if hasattr(response, 'turn_complete') and response.turn_complete:
+                            await websocket.send_json({
+                                "type": "turn_complete"
+                            })
+                            logger.info("SENT turn_complete")
+                            
                 except Exception as e:
                     logger.error(f"Error handling Gemini response: {e}")
                     import traceback

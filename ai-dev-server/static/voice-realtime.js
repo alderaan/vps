@@ -7,7 +7,9 @@ class RealtimeVoiceAssistant {
         this.audioContext = null;
         this.audioQueue = [];
         this.isAuthenticated = false;
-        this.audioScheduleTime = 0;
+        this.activeSources = [];
+        this.audioBufferQueue = [];
+        this.playbackInterval = null;
         
         this.initializeElements();
         this.setupEventListeners();
@@ -145,13 +147,17 @@ class RealtimeVoiceAssistant {
     }
 
     handleWebSocketMessage(message) {
+        console.log(`📨 WebSocket message received: type=${message.type}, size=${message.data ? message.data.length : 0}`);
+        
         switch (message.type) {
             case 'audio':
-                // Play received audio immediately (even during recording)
-                this.playAudioChunk(message.data);
+                // Queue audio for timed playback instead of immediate play
+                console.log('🎵 Adding audio to buffer queue...');
+                this.queueAudioChunk(message.data);
                 break;
             case 'text':
                 // Display AI response text
+                console.log('📝 Text received:', message.text);
                 this.addMessage('assistant', message.text);
                 break;
             case 'turn_complete':
@@ -185,26 +191,25 @@ class RealtimeVoiceAssistant {
                 channelData[i] = pcmSamples[i] / 32768.0;
             }
             
-            // Play immediately for real-time conversation
-            const currentTime = this.audioContext.currentTime;
-            // Small buffer to avoid audio glitches, but play ASAP
-            const startTime = Math.max(currentTime + 0.01, this.audioScheduleTime);
-            
-            console.log(`🔊 Playing ${pcmSamples.length} samples immediately at ${startTime.toFixed(3)}s`);
-            
-            // Play with minimal scheduling delay
+            // Play IMMEDIATELY - no scheduling delays for real-time conversation
             const source = this.audioContext.createBufferSource();
             source.buffer = audioBuffer;
             source.connect(this.audioContext.destination);
-            source.start(startTime);
+            source.start(0); // Play immediately
             
-            // Only update schedule time if we're ahead, otherwise reset to now
-            if (this.audioScheduleTime > currentTime + 0.5) {
-                // Reset if we're getting too far ahead (more than 500ms)
-                this.audioScheduleTime = currentTime + audioBuffer.duration;
-            } else {
-                this.audioScheduleTime = startTime + audioBuffer.duration;
-            }
+            console.log(`✅ Audio source started - ${pcmSamples.length} samples, duration: ${audioBuffer.duration.toFixed(3)}s`);
+            
+            // Track active source for cleanup
+            this.activeSources.push(source);
+            
+            // Remove from tracking when done
+            source.onended = () => {
+                console.log(`🏁 Audio source ended`);
+                const index = this.activeSources.indexOf(source);
+                if (index > -1) {
+                    this.activeSources.splice(index, 1);
+                }
+            };
             
         } catch (error) {
             console.error('Error playing audio:', error);
@@ -212,10 +217,57 @@ class RealtimeVoiceAssistant {
     }
 
 
+    queueAudioChunk(audioDataB64) {
+        // Add audio to buffer queue
+        this.audioBufferQueue.push(audioDataB64);
+        console.log(`📦 Audio queued, buffer size: ${this.audioBufferQueue.length}`);
+        
+        // Start playback timer if not already running
+        if (!this.playbackInterval) {
+            this.startBufferedPlayback();
+        }
+    }
+    
+    startBufferedPlayback() {
+        console.log('▶️ Starting buffered audio playback');
+        
+        // Play audio chunks from buffer at regular intervals (40ms = 960 samples at 24kHz)
+        this.playbackInterval = setInterval(() => {
+            if (this.audioBufferQueue.length > 0) {
+                const audioData = this.audioBufferQueue.shift();
+                console.log(`🎵 Playing buffered audio chunk, remaining: ${this.audioBufferQueue.length}`);
+                this.playAudioChunk(audioData);
+            } else if (this.audioBufferQueue.length === 0) {
+                // Keep running to handle new incoming audio
+            }
+        }, 40); // 40ms intervals for smooth playback
+    }
+    
+    stopBufferedPlayback() {
+        if (this.playbackInterval) {
+            clearInterval(this.playbackInterval);
+            this.playbackInterval = null;
+            console.log('⏹️ Stopped buffered audio playback');
+        }
+    }
+
     clearAudioQueue() {
-        // Reset audio scheduling for turn completion
-        this.audioScheduleTime = this.audioContext ? this.audioContext.currentTime : 0;
-        console.log('🔄 Audio queue cleared, scheduling reset');
+        // Stop playback timer
+        this.stopBufferedPlayback();
+        
+        // Clear buffer queue
+        this.audioBufferQueue = [];
+        
+        // Stop all active audio sources
+        this.activeSources.forEach(source => {
+            try {
+                source.stop();
+            } catch (e) {
+                // Source may already be stopped
+            }
+        });
+        this.activeSources = [];
+        console.log('🔄 All audio cleared - sources stopped, buffers cleared');
     }
 
     toggleRecording() {
@@ -249,9 +301,12 @@ class RealtimeVoiceAssistant {
                 }
             });
             
-            // Use Web Audio API to capture PCM directly (like Google's example)
+            // Use the EXACT working solution from StackOverflow
             const source = this.audioContext.createMediaStreamSource(this.audioStream);
             this.scriptProcessor = this.audioContext.createScriptProcessor(4096, 1, 1);
+            
+            // CRITICAL: Connect processor to destination FIRST (from working solution)
+            this.scriptProcessor.connect(this.audioContext.destination);
             
             this.scriptProcessor.onaudioprocess = (event) => {
                 if (this.isRecording) {
@@ -265,8 +320,8 @@ class RealtimeVoiceAssistant {
                 }
             };
             
+            // Connect source to processor (from working solution)
             source.connect(this.scriptProcessor);
-            // Don't connect to destination to avoid feedback - just process audio
             
             this.isRecording = true;
             this.updateButtonState();
@@ -284,6 +339,9 @@ class RealtimeVoiceAssistant {
         if (!this.isRecording) return;
 
         this.isRecording = false;
+        
+        // STOP ALL AUDIO IMMEDIATELY
+        this.clearAudioQueue();
         
         // Clean up Web Audio API components
         if (this.scriptProcessor) {
