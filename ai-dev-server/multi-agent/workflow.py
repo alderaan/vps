@@ -95,7 +95,9 @@ class MultiAgentWorkflow:
     
     def run(self, user_input: str) -> str:
         """Run the multi-agent workflow"""
-        print(f"💬 User: {user_input}")
+        # Truncate long inputs for logging (keep first 100 chars)
+        display_input = user_input[:100] + "..." if len(user_input) > 100 else user_input
+        print(f"💬 User: {display_input}")
         print("=" * 50)
         
         # Initialize state
@@ -110,6 +112,8 @@ class MultiAgentWorkflow:
         final_state = self.workflow.invoke(initial_state)
         
         print("=" * 50)
-        print(f"🤖 Final Response: {final_state['final_response']}")
+        # Truncate long responses for logging
+        display_response = final_state['final_response'][:200] + "..." if len(final_state['final_response']) > 200 else final_state['final_response']
+        print(f"🤖 Final Response: {display_response}")
         
         return final_state['final_response']
