@@ -16,7 +16,8 @@ COPY pyproject.toml uv.lock* ./
 RUN uv sync --frozen
 
 # Copy application code
-COPY server.py ./
+COPY server.py multi_agent_models.py multi_agent_endpoint.py ./
+COPY multi-agent/ ./multi-agent/
 
 # Expose port
 EXPOSE 8080
