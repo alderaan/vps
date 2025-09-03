@@ -149,16 +149,61 @@ async def verify_api_key(
 
 
 async def stream_chat_completion(request: ChatCompletionRequest) -> AsyncGenerator[str, None]:
-    """Generate streaming response in OpenAI format"""
-    
-    # Process the full response first (we'll simulate streaming)
-    response = await adapter.process_chat_completion(request)
-    full_content = response.choices[0].message.content
+    """Generate streaming response in OpenAI format with buffer words support"""
     
     # Create a unique ID for this stream
     stream_id = f"chatcmpl-{uuid.uuid4().hex[:8]}"
     
-    # Split content into words for simulated streaming
+    # Analyze the user's last message to determine if we need buffer words
+    user_message = ""
+    for msg in reversed(request.messages):
+        if msg.role == "user":
+            user_message = msg.content.lower()
+            break
+    
+    # Determine appropriate buffer words based on query type
+    buffer_phrase = None
+    if any(word in user_message for word in ["calculate", "multiply", "divide", "plus", "minus", "times", "math", "what's", "what is"]):
+        if any(op in user_message for op in ["times", "multiply", "*", "x"]):
+            buffer_phrase = "Let me calculate that multiplication for you... "
+        elif any(op in user_message for op in ["plus", "add", "+"]):
+            buffer_phrase = "Let me add those numbers... "
+        elif any(op in user_message for op in ["divide", "/"]):
+            buffer_phrase = "Let me work out that division... "
+        else:
+            buffer_phrase = "Let me calculate that for you... "
+    elif any(word in user_message for word in ["search", "find", "look", "check"]):
+        buffer_phrase = "Let me search for that information... "
+    elif any(word in user_message for word in ["help", "how", "what", "why", "when", "where"]):
+        buffer_phrase = "Let me help you with that... "
+    elif any(word in user_message for word in ["analyze", "review", "evaluate"]):
+        buffer_phrase = "Let me analyze this for you... "
+    
+    # Send buffer words immediately if needed
+    if buffer_phrase:
+        buffer_chunk = {
+            "id": stream_id,
+            "object": "chat.completion.chunk",
+            "created": int(time.time()),
+            "model": request.model,
+            "choices": [
+                {
+                    "index": 0,
+                    "delta": {
+                        "content": buffer_phrase
+                    },
+                    "finish_reason": None
+                }
+            ]
+        }
+        yield f"data: {json.dumps(buffer_chunk)}\n\n"
+        logger.info(f"Sent buffer words: {buffer_phrase}")
+    
+    # Now process the actual response
+    response = await adapter.process_chat_completion(request)
+    full_content = response.choices[0].message.content
+    
+    # Split content into words for streaming
     words = full_content.split()
     
     # Stream each word with proper SSE format
