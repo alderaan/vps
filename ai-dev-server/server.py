@@ -3,9 +3,11 @@
 Combined FastAPI + FastMCP server for development and testing.
 """
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Form, Depends, File, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse, Response
+from fastapi.staticfiles import StaticFiles
+from fastapi.security import HTTPBearer
 from fastmcp import FastMCP
 import uvicorn
 import asyncio
@@ -15,7 +17,19 @@ import httpx
 from datetime import datetime
 from pathlib import Path
 import json
+import hashlib
+import secrets
+import io
+import base64
+import wave
+import tempfile
+import struct
 from typing import Dict, List, Optional
+from pydantic import BaseModel
+
+# Gemini imports for STT/TTS
+from google import genai
+from google.genai import types
 
 # Multi-agent endpoint components
 from multi_agent_models import ChatCompletionRequest, ChatCompletionResponse
@@ -41,6 +55,23 @@ BEARER_TOKEN = os.getenv("MCP_BEARER_TOKEN")
 if not BEARER_TOKEN:
     logger.error("MCP_BEARER_TOKEN environment variable is required")
     raise ValueError("MCP_BEARER_TOKEN environment variable must be set")
+
+# Voice interface password
+VOICE_PASSWORD = os.getenv("VOICE_PASSWORD", "voice123")
+
+# Gemini API configuration for STT/TTS
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    logger.warning("GEMINI_API_KEY not found - voice features will be disabled")
+    gemini_client = None
+else:
+    try:
+        # Initialize Gemini client with API key
+        gemini_client = genai.Client(api_key=GEMINI_API_KEY)
+        logger.info("Gemini client initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize Gemini client: {e}")
+        gemini_client = None
 
 # n8n configuration
 N8N_BASE_URL = os.getenv("N8N_BASE_URL", "http://localhost:5678")
@@ -825,9 +856,394 @@ async def openai_chat_completions(request: ChatCompletionRequest):
         raise
 
 
+# Voice interface models and authentication
+class LoginRequest(BaseModel):
+    password: str
+
+class TTSRequest(BaseModel):
+    text: str
+
+# Simple session-based authentication
+voice_sessions = set()
+
+def generate_session_token():
+    return secrets.token_urlsafe(32)
+
+def convert_pcm_to_wav(pcm_data: bytes, sample_rate: int = 24000, channels: int = 1, sample_width: int = 2) -> bytes:
+    """Convert raw PCM data to WAV format for browser playback"""
+    # WAV file header format
+    # RIFF header
+    wav_header = b'RIFF'
+    # File size (will be filled later)
+    wav_header += b'\x00\x00\x00\x00'
+    # WAVE header
+    wav_header += b'WAVE'
+    
+    # fmt subchunk
+    wav_header += b'fmt '
+    # Subchunk size (16 bytes for PCM)
+    wav_header += struct.pack('<I', 16)
+    # Audio format (1 = PCM)
+    wav_header += struct.pack('<H', 1)
+    # Number of channels
+    wav_header += struct.pack('<H', channels)
+    # Sample rate
+    wav_header += struct.pack('<I', sample_rate)
+    # Byte rate (sample_rate * channels * sample_width)
+    wav_header += struct.pack('<I', sample_rate * channels * sample_width)
+    # Block align (channels * sample_width)
+    wav_header += struct.pack('<H', channels * sample_width)
+    # Bits per sample
+    wav_header += struct.pack('<H', sample_width * 8)
+    
+    # data subchunk
+    wav_header += b'data'
+    # Data size
+    wav_header += struct.pack('<I', len(pcm_data))
+    
+    # Complete WAV file
+    wav_data = wav_header + pcm_data
+    
+    # Update file size in RIFF header (total file size - 8 bytes)
+    wav_data = wav_data[:4] + struct.pack('<I', len(wav_data) - 8) + wav_data[8:]
+    
+    return wav_data
+
+async def verify_voice_session(request: Request):
+    session_token = request.cookies.get("voice_session")
+    if not session_token or session_token not in voice_sessions:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    return session_token
+
+# Voice interface endpoints
+@app.get("/voice")
+async def voice_interface():
+    """Serve the voice interface HTML page"""
+    return FileResponse("static/voice.html")
+
+@app.get("/voice/realtime")
+async def voice_realtime_interface():
+    """Serve the real-time voice interface HTML page"""
+    return FileResponse("static/voice-realtime.html")
+
+@app.post("/voice/api/auth/login")
+async def voice_login(request: LoginRequest, response: Response):
+    """Authenticate for voice interface"""
+    if request.password == VOICE_PASSWORD:
+        session_token = generate_session_token()
+        voice_sessions.add(session_token)
+        response.set_cookie(
+            key="voice_session", 
+            value=session_token, 
+            httponly=True,
+            secure=True,
+            samesite="strict",
+            max_age=86400  # 24 hours
+        )
+        return {"success": True}
+    else:
+        raise HTTPException(status_code=401, detail="Invalid password")
+
+@app.get("/voice/api/auth/check")
+async def check_voice_auth(session: str = Depends(verify_voice_session)):
+    """Check if voice session is authenticated"""
+    return {"authenticated": True}
+
+@app.post("/voice/api/stt")
+async def speech_to_text(
+    audio: UploadFile = File(),
+    session: str = Depends(verify_voice_session)
+):
+    """Convert speech to text using Gemini"""
+    try:
+        if not gemini_client:
+            raise HTTPException(status_code=503, detail="Gemini client not available")
+        
+        # Read audio data and create a temporary wave file
+        audio_data = await audio.read()
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_file:
+            temp_file.write(audio_data)
+            temp_file_path = temp_file.name
+        
+        try:
+            # Use Gemini's audio understanding capability for STT
+            audio_file = gemini_client.files.upload(file=temp_file_path)
+            
+            # Generate content with audio input for transcription
+            response = gemini_client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=[
+                    types.Content(parts=[
+                        types.Part.from_text(text="Please transcribe this audio to text. Return only the transcribed text, no additional commentary."),
+                        types.Part.from_uri(file_uri=audio_file.uri, mime_type=audio_file.mime_type)
+                    ])
+                ]
+            )
+            
+            transcribed_text = response.text.strip()
+            logger.info(f"STT transcription: {transcribed_text[:100]}...")
+            
+            # Clean up
+            gemini_client.files.delete(name=audio_file.name)
+            os.unlink(temp_file_path)
+            
+            return {"text": transcribed_text}
+            
+        except Exception as transcription_error:
+            # Clean up on error
+            if 'temp_file_path' in locals():
+                try:
+                    os.unlink(temp_file_path)
+                except:
+                    pass
+            logger.error(f"Gemini STT error: {transcription_error}")
+            raise HTTPException(status_code=500, detail=f"Speech recognition failed: {str(transcription_error)}")
+            
+    except Exception as e:
+        logger.error(f"STT error: {e}")
+        raise HTTPException(status_code=500, detail="Speech recognition failed")
+
+def determine_buffer_words(response_text: str) -> str:
+    """Determine appropriate buffer words based on the AI response content"""
+    text_lower = response_text.lower()
+    
+    # Check if it's a mathematical response
+    if any(word in text_lower for word in ["calculate", "multiply", "divide", "plus", "minus", "times", "math", "solve", "equation", "addition", "subtraction"]):
+        if any(op in text_lower for op in ["multiply", "*", "x", "times"]):
+            return "Let me calculate that multiplication for you... "
+        elif any(op in text_lower for op in ["add", "plus", "+", "addition"]):
+            return "Let me add those numbers... "
+        elif any(op in text_lower for op in ["divide", "/", "division"]):
+            return "Let me work out that division... "
+        elif "square root" in text_lower:
+            return "Let me find that square root... "
+        else:
+            return "Let me calculate that for you... "
+    # Check if it's a search/information response  
+    elif any(word in text_lower for word in ["search", "find", "look", "check", "found", "searching", "information"]):
+        return "Let me search for that information... "
+    # Check if it's an explanatory/help response
+    elif any(word in text_lower for word in ["explain", "understand", "help", "clarify", "definition", "meaning"]):
+        return "Let me help you with that... "
+    # Check if it's an analysis response
+    elif any(word in text_lower for word in ["analyze", "review", "evaluate", "analysis", "assessment"]):
+        return "Let me analyze this for you... "
+    # For longer responses (detailed explanations), add a brief buffer
+    elif len(response_text) > 150:
+        return "Here's what I found... "
+    
+    return ""  # No buffer words needed
+
+@app.post("/voice/api/tts")
+async def text_to_speech(
+    request: TTSRequest,
+    session: str = Depends(verify_voice_session)
+):
+    """Convert text to speech using Gemini with buffer words support"""
+    try:
+        if not gemini_client:
+            raise HTTPException(status_code=503, detail="Gemini client not available")
+        
+        logger.info(f"TTS request received: {request.text[:50]}...")
+        
+        # ULTRA-FAST TTS: drastically shorten text (max 100 chars)
+        text_for_voice = request.text
+        
+        # Extract only key result/answer
+        if len(request.text) > 100:
+            sentences = request.text.split('. ')
+            
+            # Look for key mathematical answers first
+            for sentence in sentences:
+                if any(keyword in sentence.lower() for keyword in [
+                    'answer is', 'result is', 'equals', '=', 'therefore', 'is '
+                ]):
+                    text_for_voice = sentence.strip()
+                    break
+            
+            # If still too long, just take first sentence and truncate
+            if len(text_for_voice) > 100:
+                text_for_voice = sentences[0][:90] + "..."
+                
+            logger.info(f"Shortened TTS text from {len(request.text)} to {len(text_for_voice)} chars")
+        
+        # NO buffer words - direct speech only for speed
+        text_to_speak = text_for_voice
+        
+        # Simplified TTS call with minimal prompt
+        response = gemini_client.models.generate_content(
+            model="gemini-2.5-flash-preview-tts", 
+            contents=text_to_speak,
+            config=types.GenerateContentConfig(
+                response_modalities=["AUDIO"],
+                # Use default PCM format (audio/L16;codec=pcm;rate=24000)
+                speech_config=types.SpeechConfig(
+                    voice_config=types.VoiceConfig(
+                        prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                            voice_name='Kore'
+                        )
+                    )
+                )
+            )
+        )
+        
+        # Extract audio data from response
+        if (response.candidates and 
+            len(response.candidates) > 0 and 
+            response.candidates[0].content.parts and 
+            len(response.candidates[0].content.parts) > 0):
+            
+            part = response.candidates[0].content.parts[0]
+            if hasattr(part, 'inline_data') and part.inline_data:
+                audio_data = part.inline_data.data
+                # Get the MIME type from the response
+                audio_mime_type = getattr(part.inline_data, 'mime_type', 'audio/opus')
+                logger.info(f"TTS audio MIME type: {audio_mime_type}")
+            else:
+                raise Exception("No audio data in response part")
+        else:
+            raise Exception("No candidates or parts in TTS response")
+        
+        logger.info(f"TTS generated {len(audio_data)} bytes of audio")
+        
+        # Handle different audio formats - prefer OGG_OPUS for web
+        if audio_mime_type.startswith('audio/opus') or audio_mime_type.startswith('audio/ogg'):
+            # Return OGG_OPUS directly - optimal for web browsers
+            return Response(
+                content=audio_data, 
+                media_type="audio/opus",  # Browser-friendly MIME type
+                headers={
+                    "Content-Disposition": "inline",
+                    "Cache-Control": "no-cache"
+                }
+            )
+        elif audio_mime_type.startswith('audio/L16'):
+            # Legacy PCM conversion if still needed
+            wav_data = convert_pcm_to_wav(audio_data, sample_rate=16000, channels=1, sample_width=2)
+            logger.info(f"Converted PCM to WAV (16kHz): {len(wav_data)} bytes")
+            
+            return Response(
+                content=wav_data,
+                media_type="audio/wav",
+                headers={
+                    "Content-Disposition": "inline",
+                    "Cache-Control": "no-cache"
+                }
+            )
+        else:
+            # Return whatever format we got
+            return Response(
+                content=audio_data, 
+                media_type=audio_mime_type,
+                headers={
+                    "Content-Disposition": "inline",
+                    "Cache-Control": "no-cache"
+                }
+            )
+        
+    except Exception as e:
+        logger.error(f"TTS error: {e}")
+        raise HTTPException(status_code=500, detail=f"Text-to-speech failed: {str(e)}")
+
+# Real-time WebSocket voice endpoint using Gemini Live API
+@app.websocket("/voice/api/realtime")
+async def voice_realtime_websocket(websocket: WebSocket):
+    """WebSocket endpoint for real-time voice chat using Gemini Live API"""
+    await websocket.accept()
+    
+    if not gemini_client:
+        await websocket.close(code=1003, reason="Gemini client not available")
+        return
+    
+    logger.info("Real-time voice WebSocket connection established")
+    
+    try:
+        # Configure Gemini Live API session
+        live_config = types.LiveConnectConfig(
+            response_modalities=["AUDIO"],
+            speech_config=types.SpeechConfig(
+                voice_config=types.VoiceConfig(
+                    prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                        voice_name="Kore"
+                    )
+                )
+            )
+        )
+        
+        # Create Gemini Live session
+        async with gemini_client.aio.live.connect(
+            model="models/gemini-2.5-flash-preview-native-audio-dialog", 
+            config=live_config
+        ) as live_session:
+            
+            # Background tasks for handling bidirectional communication
+            async def handle_client_messages():
+                """Forward messages from browser to Gemini"""
+                try:
+                    async for message in websocket.iter_json():
+                        if message["type"] == "audio":
+                            # Send audio data to Gemini Live
+                            audio_data = base64.b64decode(message["data"])
+                            await live_session.send(
+                                input={
+                                    "data": audio_data,
+                                    "mime_type": "audio/pcm"
+                                }
+                            )
+                        elif message["type"] == "text":
+                            # Send text input to Gemini Live
+                            await live_session.send(
+                                input=message["text"], 
+                                end_of_turn=True
+                            )
+                except WebSocketDisconnect:
+                    logger.info("Client WebSocket disconnected")
+                except Exception as e:
+                    logger.error(f"Error handling client message: {e}")
+            
+            async def handle_gemini_responses():
+                """Forward responses from Gemini to browser"""
+                try:
+                    async for turn in live_session:
+                        async for response in turn:
+                            if response.data:
+                                # Send audio data to browser
+                                audio_b64 = base64.b64encode(response.data).decode()
+                                await websocket.send_json({
+                                    "type": "audio",
+                                    "data": audio_b64,
+                                    "mime_type": "audio/pcm"
+                                })
+                            elif response.text:
+                                # Send text response to browser  
+                                await websocket.send_json({
+                                    "type": "text", 
+                                    "text": response.text
+                                })
+                except Exception as e:
+                    logger.error(f"Error handling Gemini response: {e}")
+            
+            # Run both handlers concurrently
+            async with asyncio.TaskGroup() as tg:
+                tg.create_task(handle_client_messages())
+                tg.create_task(handle_gemini_responses())
+                
+    except WebSocketDisconnect:
+        logger.info("WebSocket disconnected")
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+        try:
+            await websocket.close(code=1011, reason="Server error")
+        except:
+            pass
+
+# Mount static files for voice interface
+app.mount("/voice/static", StaticFiles(directory="static"), name="static")
+
 # Mount FastMCP exactly as per documentation
 app.mount("/llm", mcp_app)
 logger.info("FastMCP mounted at /llm - MCP endpoint available at /llm/mcp")
+logger.info("Voice interface available at /voice")
 
 
 async def main():
