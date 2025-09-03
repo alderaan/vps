@@ -91,18 +91,24 @@ class RealtimeVoiceAssistant {
     async initializeRealtime() {
         if (!this.isAuthenticated) return;
         
-        // Initialize Web Audio API for real-time audio processing
-        try {
-            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            await this.audioContext.resume();
-        } catch (error) {
-            console.error('Failed to initialize audio context:', error);
-            this.addMessage('system', 'Error: Could not initialize audio. Please check permissions.');
-            return;
-        }
-
-        // Connect to WebSocket
+        // Don't initialize audio context here - wait for user interaction
+        // Connect to WebSocket first
         this.connectWebSocket();
+    }
+
+    async initializeAudioContext() {
+        // Initialize Web Audio API only after user gesture
+        if (!this.audioContext) {
+            try {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                await this.audioContext.resume();
+                console.log('🔊 Audio context initialized after user interaction');
+            } catch (error) {
+                console.error('Failed to initialize audio context:', error);
+                this.addMessage('system', 'Error: Could not initialize audio. Please check permissions.');
+                throw error;
+            }
+        }
     }
 
     connectWebSocket() {
@@ -147,6 +153,11 @@ class RealtimeVoiceAssistant {
                 // Display AI response text
                 this.addMessage('assistant', message.text);
                 break;
+            case 'turn_complete':
+                // AI finished speaking - clear any hanging state
+                console.log('🎤 AI finished speaking (turn complete)');
+                this.clearAudioQueue();
+                break;
         }
     }
 
@@ -154,16 +165,26 @@ class RealtimeVoiceAssistant {
         try {
             // Decode base64 audio data
             const audioData = atob(audioDataB64);
-            const audioBuffer = new ArrayBuffer(audioData.length);
-            const audioView = new Uint8Array(audioBuffer);
-            for (let i = 0; i < audioData.length; i++) {
-                audioView[i] = audioData.charCodeAt(i);
+            
+            // Convert to Int16 array (PCM format from Gemini)
+            const pcmData = new Int16Array(audioData.length / 2);
+            for (let i = 0; i < pcmData.length; i++) {
+                pcmData[i] = (audioData.charCodeAt(i * 2 + 1) << 8) | audioData.charCodeAt(i * 2);
             }
             
-            // Decode PCM audio and play
-            const decodedAudio = await this.audioContext.decodeAudioData(this.convertPCMToWAV(audioView));
+            // Create AudioBuffer with correct sample rate (24kHz from Gemini)
+            const sampleRate = 24000; // Gemini's output sample rate
+            const audioBuffer = this.audioContext.createBuffer(1, pcmData.length, sampleRate);
+            const channelData = audioBuffer.getChannelData(0);
+            
+            // Convert Int16 to Float32 for Web Audio API
+            for (let i = 0; i < pcmData.length; i++) {
+                channelData[i] = pcmData[i] / 32768.0; // Normalize to -1.0 to 1.0
+            }
+            
+            // Play the audio
             const source = this.audioContext.createBufferSource();
-            source.buffer = decodedAudio;
+            source.buffer = audioBuffer;
             source.connect(this.audioContext.destination);
             source.start();
         } catch (error) {
@@ -171,43 +192,20 @@ class RealtimeVoiceAssistant {
         }
     }
 
-    convertPCMToWAV(pcmData) {
-        // Convert PCM to WAV format for Web Audio API
-        const sampleRate = 24000;
-        const channels = 1;
-        const bitsPerSample = 16;
-        
-        const length = pcmData.length;
-        const arrayBuffer = new ArrayBuffer(44 + length);
-        const view = new DataView(arrayBuffer);
-        
-        // WAV header
-        const writeString = (offset, string) => {
-            for (let i = 0; i < string.length; i++) {
-                view.setUint8(offset + i, string.charCodeAt(i));
+
+    clearAudioQueue() {
+        // Clear any pending audio to prevent hanging (Google's approach)
+        // Stop any currently playing audio
+        try {
+            if (this.audioContext && this.audioContext.state === 'running') {
+                // This helps prevent audio hanging by resetting the audio context state
+                this.audioContext.suspend().then(() => {
+                    this.audioContext.resume();
+                });
             }
-        };
-        
-        writeString(0, 'RIFF');
-        view.setUint32(4, 36 + length, true);
-        writeString(8, 'WAVE');
-        writeString(12, 'fmt ');
-        view.setUint32(16, 16, true);
-        view.setUint16(20, 1, true);
-        view.setUint16(22, channels, true);
-        view.setUint32(24, sampleRate, true);
-        view.setUint32(28, sampleRate * channels * bitsPerSample / 8, true);
-        view.setUint16(32, channels * bitsPerSample / 8, true);
-        view.setUint16(34, bitsPerSample, true);
-        writeString(36, 'data');
-        view.setUint32(40, length, true);
-        
-        // Copy PCM data
-        for (let i = 0; i < length; i++) {
-            view.setUint8(44 + i, pcmData[i]);
+        } catch (error) {
+            console.log('Audio queue clear completed');
         }
-        
-        return arrayBuffer;
     }
 
     toggleRecording() {
@@ -227,8 +225,11 @@ class RealtimeVoiceAssistant {
         if (!this.isConnected || this.isRecording) return;
 
         try {
+            // Initialize audio context on first user interaction
+            await this.initializeAudioContext();
+
             // Get microphone stream optimized for real-time processing
-            const stream = await navigator.mediaDevices.getUserMedia({ 
+            this.audioStream = await navigator.mediaDevices.getUserMedia({ 
                 audio: {
                     sampleRate: 16000,  // Match Google's expected sample rate
                     channelCount: 1,    // Mono audio
@@ -238,20 +239,25 @@ class RealtimeVoiceAssistant {
                 }
             });
             
-            this.mediaRecorder = new MediaRecorder(stream, {
-                mimeType: 'audio/webm;codecs=opus'
-            });
+            // Use Web Audio API to capture PCM directly (like Google's example)
+            const source = this.audioContext.createMediaStreamSource(this.audioStream);
+            this.scriptProcessor = this.audioContext.createScriptProcessor(4096, 1, 1);
             
-            // Send audio data in real-time chunks
-            this.mediaRecorder.ondataavailable = (event) => {
-                if (event.data.size > 0 && this.websocket && this.websocket.readyState === WebSocket.OPEN) {
-                    // Convert to PCM and send to WebSocket
-                    this.sendAudioChunk(event.data);
+            this.scriptProcessor.onaudioprocess = (event) => {
+                if (this.isRecording) {
+                    const inputData = event.inputBuffer.getChannelData(0);
+                    // Convert Float32 to Int16 PCM
+                    const pcmData = new Int16Array(inputData.length);
+                    for (let i = 0; i < inputData.length; i++) {
+                        pcmData[i] = Math.max(-1, Math.min(1, inputData[i])) * 0x7FFF;
+                    }
+                    this.sendPCMAudioChunk(pcmData.buffer);
                 }
             };
-
-            // Start recording with small chunks for real-time streaming
-            this.mediaRecorder.start(100); // 100ms chunks for real-time feel
+            
+            source.connect(this.scriptProcessor);
+            this.scriptProcessor.connect(this.audioContext.destination);
+            
             this.isRecording = true;
             this.updateButtonState();
 
@@ -265,11 +271,30 @@ class RealtimeVoiceAssistant {
     }
 
     stopRecording() {
-        if (!this.isRecording || !this.mediaRecorder) return;
+        if (!this.isRecording) return;
 
-        this.mediaRecorder.stop();
-        this.mediaRecorder.stream.getTracks().forEach(track => track.stop());
         this.isRecording = false;
+        
+        // Clean up Web Audio API components
+        if (this.scriptProcessor) {
+            this.scriptProcessor.disconnect();
+            this.scriptProcessor = null;
+        }
+        
+        // Stop media stream tracks
+        if (this.audioStream) {
+            this.audioStream.getTracks().forEach(track => track.stop());
+            this.audioStream = null;
+        }
+        
+        // Signal end of turn to Gemini Live
+        if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+            this.websocket.send(JSON.stringify({
+                type: 'end_turn'
+            }));
+            console.log('🎤 Sent end_turn signal to server');
+        }
+        
         this.updateButtonState();
 
         // Remove the speaking indicator
@@ -280,16 +305,13 @@ class RealtimeVoiceAssistant {
         }
     }
 
-    async sendAudioChunk(audioBlob) {
+    sendPCMAudioChunk(pcmBuffer) {
         try {
-            // Convert blob to array buffer
-            const arrayBuffer = await audioBlob.arrayBuffer();
-            const audioData = new Uint8Array(arrayBuffer);
-            
-            // Convert to base64 for WebSocket transmission
+            // Convert PCM buffer to base64 - same as Google's approach
+            const audioData = new Uint8Array(pcmBuffer);
             const base64Audio = btoa(String.fromCharCode(...audioData));
             
-            // Send to WebSocket
+            // Send to WebSocket with PCM mime type (like Google's code)
             if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
                 this.websocket.send(JSON.stringify({
                     type: 'audio',
@@ -297,9 +319,10 @@ class RealtimeVoiceAssistant {
                 }));
             }
         } catch (error) {
-            console.error('Error sending audio chunk:', error);
+            console.error('Error sending PCM audio chunk:', error);
         }
     }
+
 
     updateButtonState() {
         if (!this.isConnected) {

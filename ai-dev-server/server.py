@@ -1151,6 +1151,20 @@ async def voice_realtime_websocket(websocket: WebSocket):
     """WebSocket endpoint for real-time voice chat using Gemini Live API"""
     await websocket.accept()
     
+    # Check authentication via cookies (same as HTTP endpoints)
+    try:
+        cookies = websocket.cookies
+        session_token = cookies.get("voice_session")
+        if not session_token or session_token not in voice_sessions:
+            logger.warning("WebSocket authentication failed - invalid session")
+            await websocket.close(code=1008, reason="Authentication required")
+            return
+        logger.info("WebSocket authentication successful")
+    except Exception as e:
+        logger.error(f"WebSocket auth error: {e}")
+        await websocket.close(code=1008, reason="Authentication error")
+        return
+    
     if not gemini_client:
         await websocket.close(code=1003, reason="Gemini client not available")
         return
@@ -1158,7 +1172,7 @@ async def voice_realtime_websocket(websocket: WebSocket):
     logger.info("Real-time voice WebSocket connection established")
     
     try:
-        # Configure Gemini Live API session
+        # Configure Gemini Live API session - simplified config
         live_config = types.LiveConnectConfig(
             response_modalities=["AUDIO"],
             speech_config=types.SpeechConfig(
@@ -1181,47 +1195,70 @@ async def voice_realtime_websocket(websocket: WebSocket):
                 """Forward messages from browser to Gemini"""
                 try:
                     async for message in websocket.iter_json():
+                        logger.info(f"Received message from browser: type={message.get('type', 'unknown')}")
                         if message["type"] == "audio":
-                            # Send audio data to Gemini Live
+                            # Send audio data to Gemini Live - Use exact Google pattern
                             audio_data = base64.b64decode(message["data"])
-                            await live_session.send(
-                                input={
-                                    "data": audio_data,
-                                    "mime_type": "audio/pcm"
-                                }
-                            )
+                            logger.info(f"Decoded audio data: {len(audio_data)} bytes")
+                            # Send PCM audio exactly like Google's working example
+                            await live_session.send(input={"data": audio_data, "mime_type": "audio/pcm"})
+                            logger.info("Audio data sent to Gemini Live")
                         elif message["type"] == "text":
-                            # Send text input to Gemini Live
-                            await live_session.send(
-                                input=message["text"], 
-                                end_of_turn=True
-                            )
+                            # Send text input to Gemini Live - Google's approach
+                            await live_session.send(input=message["text"], end_of_turn=True)
+                            logger.info(f"Text sent to Gemini Live: {message['text']}")
+                        elif message["type"] == "end_turn":
+                            # Signal end of turn to Gemini Live - Google's approach
+                            await live_session.send(input="", end_of_turn=True)
+                            logger.info("End of turn signal sent to Gemini Live")
                 except WebSocketDisconnect:
                     logger.info("Client WebSocket disconnected")
                 except Exception as e:
                     logger.error(f"Error handling client message: {e}")
+                    import traceback
+                    logger.error(traceback.format_exc())
             
             async def handle_gemini_responses():
-                """Forward responses from Gemini to browser"""
+                """Forward responses from Gemini to browser - Correct Google's approach"""
                 try:
-                    async for turn in live_session:
+                    while True:
+                        # Get turn from session - this is the correct Google pattern
+                        turn = live_session.receive()
+                        logger.info("Received turn from Gemini, processing responses...")
+                        
+                        response_count = 0
                         async for response in turn:
-                            if response.data:
+                            response_count += 1
+                            logger.info(f"Processing response #{response_count} from Gemini")
+                            
+                            if data := response.data:
                                 # Send audio data to browser
-                                audio_b64 = base64.b64encode(response.data).decode()
+                                audio_b64 = base64.b64encode(data).decode()
                                 await websocket.send_json({
                                     "type": "audio",
                                     "data": audio_b64,
                                     "mime_type": "audio/pcm"
                                 })
-                            elif response.text:
-                                # Send text response to browser  
+                                logger.info(f"Sent {len(data)} bytes of audio to browser")
+                            if text := response.text:
+                                # Send text response to browser
                                 await websocket.send_json({
                                     "type": "text", 
-                                    "text": response.text
+                                    "text": text
                                 })
+                                logger.info(f"Sent text to browser: {text[:50]}...")
+                        
+                        # Google's fix: Signal turn completion to prevent hanging
+                        # This tells the browser that the AI finished speaking
+                        await websocket.send_json({
+                            "type": "turn_complete"
+                        })
+                        logger.info(f"Turn complete - AI finished speaking (processed {response_count} responses)")
+                        
                 except Exception as e:
                     logger.error(f"Error handling Gemini response: {e}")
+                    import traceback
+                    logger.error(traceback.format_exc())
             
             # Run both handlers concurrently
             async with asyncio.TaskGroup() as tg:
