@@ -29,10 +29,10 @@ logger = logging.getLogger(__name__)
 security = HTTPBearer()
 
 # Get API key from environment
-OPENAI_COMPATIBLE_API_KEY = os.getenv("OPENAI_COMPATIBLE_API_KEY")
-if not OPENAI_COMPATIBLE_API_KEY:
-    logger.warning("OPENAI_COMPATIBLE_API_KEY not set - using default for development")
-    OPENAI_COMPATIBLE_API_KEY = "sk-dev-test-key"  # Default for development
+MULTI_AGENT_API_KEY = os.getenv("MULTI_AGENT_API_KEY")
+if not MULTI_AGENT_API_KEY:
+    logger.warning("MULTI_AGENT_API_KEY not set - using default for development")
+    MULTI_AGENT_API_KEY = "sk-dev-test-key"  # Default for development
 
 
 class MultiAgentAdapter:
@@ -135,7 +135,7 @@ async def verify_api_key(
     token = credentials.credentials
     
     # Accept both formats: with or without 'sk-' prefix
-    if token == OPENAI_COMPATIBLE_API_KEY or f"sk-{token}" == OPENAI_COMPATIBLE_API_KEY:
+    if token == MULTI_AGENT_API_KEY or f"sk-{token}" == MULTI_AGENT_API_KEY:
         return token
     
     raise HTTPException(

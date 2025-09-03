@@ -14,7 +14,7 @@ load_dotenv()
 
 # Configuration
 BASE_URL = "http://localhost:8080"
-API_KEY = os.getenv("OPENAI_COMPATIBLE_API_KEY", "sk-dev-test-key")
+API_KEY = os.getenv("MULTI_AGENT_API_KEY", "sk-dev-test-key")
 
 
 async def test_chat_completion():
