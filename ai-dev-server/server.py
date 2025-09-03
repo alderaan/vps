@@ -1218,6 +1218,9 @@ async def voice_realtime_websocket(websocket: WebSocket):
                             # Signal end of turn to Gemini Live - Use text realtime input
                             await live_session.send_realtime_input(text="")
                             logger.info("End of turn signal sent to Gemini Live")
+                        elif message["type"] == "ping":
+                            await websocket.send_json({"type": "pong"})
+                            logger.info("Sent pong response to client ping")
                 except WebSocketDisconnect:
                     logger.info("Client WebSocket disconnected")
                 except Exception as e:
