@@ -6,10 +6,14 @@ Routes requests to the multi-agent LangGraph system
 import os
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, AsyncGenerator
 from fastapi import HTTPException, Header, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.responses import StreamingResponse
 import logging
+import json
+import uuid
+import time
 
 # Add multi-agent directory to path
 sys.path.append(str(Path(__file__).parent / "multi-agent"))
@@ -144,10 +148,60 @@ async def verify_api_key(
     )
 
 
+async def stream_chat_completion(request: ChatCompletionRequest) -> AsyncGenerator[str, None]:
+    """Generate streaming response in OpenAI format"""
+    
+    # Process the full response first (we'll simulate streaming)
+    response = await adapter.process_chat_completion(request)
+    full_content = response.choices[0].message.content
+    
+    # Create a unique ID for this stream
+    stream_id = f"chatcmpl-{uuid.uuid4().hex[:8]}"
+    
+    # Split content into words for simulated streaming
+    words = full_content.split()
+    
+    # Stream each word with proper SSE format
+    for i, word in enumerate(words):
+        chunk = {
+            "id": stream_id,
+            "object": "chat.completion.chunk",
+            "created": int(time.time()),
+            "model": request.model,
+            "choices": [
+                {
+                    "index": 0,
+                    "delta": {
+                        "content": word + (" " if i < len(words) - 1 else "")
+                    },
+                    "finish_reason": None
+                }
+            ]
+        }
+        yield f"data: {json.dumps(chunk)}\n\n"
+    
+    # Send final chunk with finish_reason
+    final_chunk = {
+        "id": stream_id,
+        "object": "chat.completion.chunk",
+        "created": int(time.time()),
+        "model": request.model,
+        "choices": [
+            {
+                "index": 0,
+                "delta": {},
+                "finish_reason": "stop"
+            }
+        ]
+    }
+    yield f"data: {json.dumps(final_chunk)}\n\n"
+    yield "data: [DONE]\n\n"
+
+
 async def chat_completions_endpoint(
     request: ChatCompletionRequest,
     api_key: str = Depends(verify_api_key)
-) -> ChatCompletionResponse:
+):
     """
     OpenAI-compatible chat completions endpoint for 11Labs integration.
     
@@ -155,13 +209,14 @@ async def chat_completions_endpoint(
     through the multi-agent LangGraph system.
     """
     
-    # For now, ignore streaming requests and always return non-streaming
-    # ElevenLabs sends stream=True but can handle non-streaming responses
+    # Handle streaming vs non-streaming
     if request.stream:
-        logger.info("Streaming requested but returning non-streaming response")
-        request.stream = False  # Override to false
-    
-    # Process the request
-    response = await adapter.process_chat_completion(request)
-    
-    return response
+        logger.info("Streaming response requested")
+        return StreamingResponse(
+            stream_chat_completion(request),
+            media_type="text/event-stream"
+        )
+    else:
+        # Process non-streaming request
+        response = await adapter.process_chat_completion(request)
+        return response
