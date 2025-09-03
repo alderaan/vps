@@ -90,6 +90,7 @@ Think of it like this: Claude is your assistant, MCP is the phone line, and n8n 
 - `GET /ready` - Readiness check
 - `POST /auth` - Development authentication endpoint
 - `GET /docs` - OpenAPI documentation
+- `POST /v1/chat/completions` - OpenAI-compatible endpoint for 11Labs
 
 ### MCP Endpoint
 
@@ -145,6 +146,9 @@ LANGSMITH_TRACING=true                   # Enable LangSmith tracing
 LANGSMITH_ENDPOINT=https://api.smith.langchain.com  # LangSmith API endpoint
 LANGSMITH_API_KEY=your-langsmith-key    # LangSmith API key
 LANGSMITH_PROJECT=ai-dev-server         # Project name in LangSmith
+
+# OpenAI-Compatible API (for 11Labs integration)
+OPENAI_COMPATIBLE_API_KEY=sk-your-custom-key  # API key for OpenAI-compatible endpoint
 ```
 
 ## Multi-Agent System
@@ -174,6 +178,57 @@ uv run main.py
 ```
 
 The system automatically traces all LLM interactions to LangSmith when environment variables are configured.
+
+## 11Labs Integration
+
+The server provides an OpenAI-compatible endpoint at `/v1/chat/completions` that can be used with 11Labs custom LLM feature.
+
+### Configuration in 11Labs
+
+1. **Navigate to Voice Settings** in your 11Labs project
+2. **Enable Custom LLM** option
+3. **Configure the endpoint**:
+   - **URL**: `https://ai-dev.correlion.ai/v1/chat/completions` (or your server URL)
+   - **API Key**: Your `OPENAI_COMPATIBLE_API_KEY` value
+   - **Model Name**: `multi-agent-system` (or leave default)
+   - **Enable**: "Custom LLM extra body" checkbox
+
+### How It Works
+
+1. 11Labs sends OpenAI-format requests to your endpoint
+2. The endpoint authenticates using Bearer token
+3. Requests are routed through the multi-agent system:
+   - Orchestrator analyzes the request
+   - Routes to Math Specialist for mathematical queries
+   - Returns direct responses for general queries
+4. Response is formatted in OpenAI-compatible format
+5. 11Labs uses the response for voice generation
+
+### Testing the Endpoint
+
+```bash
+# Test with curl
+curl -X POST https://ai-dev.correlion.ai/v1/chat/completions \
+  -H "Authorization: Bearer sk-your-custom-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "multi-agent-system",
+    "messages": [
+      {"role": "user", "content": "What is 25 times 17?"}
+    ]
+  }'
+
+# Or use the test script
+uv run test_openai_endpoint.py
+```
+
+### Features
+
+- **OpenAI API Compliance**: Fully compatible with OpenAI chat completions format
+- **Multi-Agent Routing**: Automatically routes to appropriate specialist agents
+- **Bearer Token Auth**: Secure API key authentication
+- **LangSmith Tracing**: All interactions are traced for debugging
+- **Non-Streaming**: Currently supports standard responses (streaming planned)
 
 ## Quick Start
 

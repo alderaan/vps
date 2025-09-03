@@ -17,8 +17,23 @@ from pathlib import Path
 import json
 from typing import Dict, List, Optional
 
+# Multi-agent endpoint components
+from multi_agent_models import ChatCompletionRequest, ChatCompletionResponse
+from multi_agent_endpoint import chat_completions_endpoint
+
+# Load environment variables from .env file if it exists
+# This is safe to do even in Docker where env vars are already set
+# dotenv will not override existing environment variables by default
+from dotenv import load_dotenv
+load_dotenv()
+
+# OpenAI endpoint imports are done lazily to avoid startup issues
+
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 # Bearer token for authentication - read from environment
@@ -33,16 +48,12 @@ N8N_API_KEY = os.getenv("N8N_API_KEY")
 
 
 class N8nClient:
-    """Client for interacting with n8n API."""
-
-    def __init__(self, base_url: str, api_key: str):
+    def __init__(self, base_url, api_key):
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.headers = {"X-N8N-API-KEY": api_key, "Content-Type": "application/json"}
-
-    async def _request(
-        self, method: str, endpoint: str, data: Optional[Dict] = None
-    ) -> Dict:
+    
+    async def _request(self, method, endpoint, data=None):
         """Make HTTP request to n8n API."""
         url = f"{self.base_url}/api/v1{endpoint}"
 
@@ -784,6 +795,7 @@ async def root():
     }
 
 
+
 # Authentication endpoint (placeholder for development)
 @app.post("/auth")
 async def authenticate(credentials: dict):
@@ -796,6 +808,13 @@ async def authenticate(credentials: dict):
         }
     else:
         raise HTTPException(status_code=401, detail="Invalid credentials")
+
+
+
+@app.post("/v1/chat/completions", response_model=ChatCompletionResponse)
+async def openai_chat_completions(request: ChatCompletionRequest):
+    """OpenAI-compatible chat completions endpoint for 11Labs integration."""
+    return await chat_completions_endpoint(request)
 
 
 # Mount FastMCP exactly as per documentation
