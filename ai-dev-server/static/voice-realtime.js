@@ -7,9 +7,7 @@ class RealtimeVoiceAssistant {
         this.audioContext = null;
         this.audioQueue = [];
         this.isAuthenticated = false;
-        this.activeSources = [];
-        this.audioBufferQueue = [];
-        this.playbackInterval = null;
+        this.audioScheduleTime = 0;
         
         this.initializeElements();
         this.setupEventListeners();
@@ -126,14 +124,6 @@ class RealtimeVoiceAssistant {
             this.isConnected = true;
             this.addMessage('system', 'Real-time voice connection established. You can now speak naturally!');
             this.updateButtonState();
-
-            // Start heartbeat
-            this.heartbeatInterval = setInterval(() => {
-                if (this.websocket.readyState === WebSocket.OPEN) {
-                    this.websocket.send(JSON.stringify({ type: 'ping' }));
-                    console.log('📡 Sent WebSocket ping');
-                }
-            }, 30000); // Ping every 30 seconds
         };
         
         this.websocket.onmessage = (event) => {
@@ -144,7 +134,6 @@ class RealtimeVoiceAssistant {
         this.websocket.onclose = () => {
             console.log('📴 WebSocket disconnected');
             this.isConnected = false;
-            clearInterval(this.heartbeatInterval);
             this.updateButtonState();
             this.addMessage('system', 'Connection lost. Please refresh to reconnect.');
         };
@@ -156,105 +145,77 @@ class RealtimeVoiceAssistant {
     }
 
     handleWebSocketMessage(message) {
-        console.log(`📨 WebSocket message received at ${new Date().toISOString()}: type=${message.type}, size=${message.data ? message.data.length : 0}`);
-        
         switch (message.type) {
             case 'audio':
-                // Play audio immediately for real-time streaming
-                console.log('🎵 Playing audio chunk immediately...');
+                // Play received audio immediately (even during recording)
                 this.playAudioChunk(message.data);
                 break;
             case 'text':
                 // Display AI response text
-                console.log('📝 Text received:', message.text);
                 this.addMessage('assistant', message.text);
                 break;
             case 'turn_complete':
-                // AI finished speaking - clear any active sources
+                // AI finished speaking - clear any hanging state (may not be used without turn logic)
                 console.log('🎤 AI finished speaking (turn complete)');
                 this.clearAudioQueue();
-                break;
-            case 'pong':
-                console.log('📡 Received WebSocket pong');
                 break;
         }
     }
 
     async playAudioChunk(audioDataB64) {
         try {
-            // Decode base64 audio (16-bit PCM at 24kHz from Gemini)
+            // Server sends raw PCM from Gemini → base64 encode → WebSocket
+            // We need to decode base64 and play as 24kHz 16-bit PCM directly
             const binaryString = atob(audioDataB64);
             const audioBytes = new Uint8Array(binaryString.length);
             for (let i = 0; i < binaryString.length; i++) {
                 audioBytes[i] = binaryString.charCodeAt(i);
             }
-
-            // Convert to Int16Array
+            
+            // Gemini sends 16-bit PCM at 24kHz - convert to Int16Array
             const pcmSamples = new Int16Array(audioBytes.buffer);
-
+            
             // Create Web Audio buffer at 24kHz (Gemini's output rate)
             const sampleRate = 24000;
             const audioBuffer = this.audioContext.createBuffer(1, pcmSamples.length, sampleRate);
             const channelData = audioBuffer.getChannelData(0);
-
+            
             // Convert 16-bit PCM to float32 for Web Audio (-1.0 to 1.0)
             for (let i = 0; i < pcmSamples.length; i++) {
                 channelData[i] = pcmSamples[i] / 32768.0;
             }
-
-            // Play immediately
+            
+            // Play immediately for real-time conversation
+            const currentTime = this.audioContext.currentTime;
+            // Small buffer to avoid audio glitches, but play ASAP
+            const startTime = Math.max(currentTime + 0.01, this.audioScheduleTime);
+            
+            console.log(`🔊 Playing ${pcmSamples.length} samples immediately at ${startTime.toFixed(3)}s`);
+            
+            // Play with minimal scheduling delay
             const source = this.audioContext.createBufferSource();
             source.buffer = audioBuffer;
             source.connect(this.audioContext.destination);
-            source.start(0); // Play immediately
-
-            console.log(`✅ Audio source started - ${pcmSamples.length} samples, duration: ${audioBuffer.duration.toFixed(3)}s`);
-
-            // Track active source for cleanup
-            this.activeSources.push(source);
-
-            // Remove from tracking when done
-            source.onended = () => {
-                console.log(`🏁 Audio source ended`);
-                const index = this.activeSources.indexOf(source);
-                if (index > -1) {
-                    this.activeSources.splice(index, 1);
-                }
-            };
-
+            source.start(startTime);
+            
+            // Only update schedule time if we're ahead, otherwise reset to now
+            if (this.audioScheduleTime > currentTime + 0.5) {
+                // Reset if we're getting too far ahead (more than 500ms)
+                this.audioScheduleTime = currentTime + audioBuffer.duration;
+            } else {
+                this.audioScheduleTime = startTime + audioBuffer.duration;
+            }
+            
         } catch (error) {
             console.error('Error playing audio:', error);
         }
     }
 
 
-    queueAudioChunk(audioDataB64) {
-        // No longer needed, as we play audio directly in handleWebSocketMessage
-        console.log('🎵 Audio chunk passed to playAudioChunk');
-        this.playAudioChunk(audioDataB64);
-    }
-
-    startBufferedPlayback() {
-        // No longer needed, as we play audio immediately
-        console.log('▶️ Real-time playback enabled (no buffering)');
-    }
-
-    stopBufferedPlayback() {
-        // No longer needed, but keep for compatibility
-        console.log('⏹️ Buffered playback stopped (no-op)');
-    }
-
     clearAudioQueue() {
-        // Stop all active audio sources
-        this.activeSources.forEach(source => {
-            try {
-                source.stop();
-            } catch (e) {
-                // Source may already be stopped
-            }
-        });
-        this.activeSources = [];
-        console.log('🔄 All audio cleared - sources stopped');
+        // Reset audio scheduling for turn completion
+        this.audioScheduleTime = this.audioContext ? this.audioContext.currentTime : 0;
+        console.log('🔄 Audio queue cleared, scheduling reset');
     }
 
     toggleRecording() {
@@ -287,18 +248,14 @@ class RealtimeVoiceAssistant {
                     autoGainControl: true
                 }
             });
-
-            // Create media stream source
+            
+            // Use Web Audio API to capture PCM directly (like Google's example)
             const source = this.audioContext.createMediaStreamSource(this.audioStream);
-
-            // Load AudioWorklet processor
-            await this.audioContext.audioWorklet.addModule('/voice/static/audio-processor.js');
-            this.audioWorklet = new AudioWorkletNode(this.audioContext, 'audio-processor');
-
-            // Process audio data in real-time
-            this.audioWorklet.port.onmessage = (event) => {
+            this.scriptProcessor = this.audioContext.createScriptProcessor(4096, 1, 1);
+            
+            this.scriptProcessor.onaudioprocess = (event) => {
                 if (this.isRecording) {
-                    const inputData = event.data; // Float32Array
+                    const inputData = event.inputBuffer.getChannelData(0);
                     // Convert Float32 to Int16 PCM
                     const pcmData = new Int16Array(inputData.length);
                     for (let i = 0; i < inputData.length; i++) {
@@ -307,10 +264,10 @@ class RealtimeVoiceAssistant {
                     this.sendPCMAudioChunk(pcmData.buffer);
                 }
             };
-
-            // Connect source to worklet (no need to connect to destination unless monitoring is desired)
-            source.connect(this.audioWorklet);
-
+            
+            source.connect(this.scriptProcessor);
+            // Don't connect to destination to avoid feedback - just process audio
+            
             this.isRecording = true;
             this.updateButtonState();
 
@@ -328,13 +285,10 @@ class RealtimeVoiceAssistant {
 
         this.isRecording = false;
         
-        // STOP ALL AUDIO IMMEDIATELY
-        this.clearAudioQueue();
-        
         // Clean up Web Audio API components
-        if (this.audioWorklet) {
-            this.audioWorklet.disconnect();
-            this.audioWorklet = null;
+        if (this.scriptProcessor) {
+            this.scriptProcessor.disconnect();
+            this.scriptProcessor = null;
         }
         
         // Stop media stream tracks
@@ -343,13 +297,8 @@ class RealtimeVoiceAssistant {
             this.audioStream = null;
         }
         
-        // Signal end of turn to Gemini Live
-        if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
-            this.websocket.send(JSON.stringify({
-                type: 'end_turn'
-            }));
-            console.log('🎤 Sent end_turn signal to server');
-        }
+        // No longer sending end_turn - let Gemini handle conversation flow naturally
+        console.log('🎤 Stopped recording - real-time conversation continues');
         
         this.updateButtonState();
 
