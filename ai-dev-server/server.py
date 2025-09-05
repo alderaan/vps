@@ -1214,7 +1214,11 @@ async def voice_realtime_websocket(websocket: WebSocket):
                                 }]
                             )
                             logger.info(f"Text sent to Gemini Live: {message['text']}")
-                        # Removed end_turn handling - let Gemini handle conversation flow naturally
+                        elif message["type"] == "end_turn":
+                            # Send empty text with correct method like Google's example
+                            # The Python example uses session.send(input=".", end_of_turn=True)
+                            await live_session.send(input=".", end_of_turn=True)
+                            logger.info("End of turn signal sent to Gemini Live")
                 except WebSocketDisconnect:
                     logger.info("Client WebSocket disconnected")
                 except Exception as e:

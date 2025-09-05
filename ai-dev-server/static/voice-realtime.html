@@ -3,56 +3,523 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Real-time Voice Assistant - David's AI System</title>
-    <link rel="stylesheet" href="/voice/static/voice.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title>Real-time Voice Assistant - Based on Google's Implementation</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #status {
+            position: absolute;
+            bottom: 5vh;
+            left: 0;
+            right: 0;
+            z-index: 10;
+            text-align: center;
+            font-size: 16px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+        }
+
+        .controls {
+            z-index: 10;
+            position: absolute;
+            bottom: 15vh;
+            left: 0;
+            right: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: row;
+            gap: 20px;
+        }
+
+        .controls button {
+            outline: none;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            width: 64px;
+            height: 64px;
+            cursor: pointer;
+            font-size: 24px;
+            padding: 0;
+            margin: 0;
+            transition: all 0.3s ease;
+        }
+
+        .controls button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        .controls button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .controls button.recording {
+            background: rgba(255, 0, 0, 0.3);
+            border-color: #ff0000;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .login-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .login-modal.hidden {
+            display: none;
+        }
+
+        .login-form {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .login-form input {
+            width: 250px;
+            padding: 12px;
+            margin: 15px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.9);
+            font-size: 16px;
+        }
+
+        .login-form button {
+            padding: 12px 30px;
+            margin: 10px;
+            border: none;
+            border-radius: 8px;
+            background: #667eea;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .login-form button:hover {
+            background: #5a6fd8;
+        }
+
+        .error {
+            color: #ff6b6b;
+            margin: 10px 0;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1><i class="fas fa-microphone"></i> Real-time Voice Assistant</h1>
-            <p>Talk naturally with David's Multi-Agent AI System</p>
-        </header>
-
-        <div class="voice-interface">
-            <!-- Recording Button -->
-            <div class="recording-section">
-                <button id="recordButton" class="record-btn">
-                    <i class="fas fa-microphone"></i>
-                    <span id="buttonText">Hold to Talk</span>
-                </button>
-                <div id="recordingStatus" class="status hidden">
-                    <i class="fas fa-circle recording-pulse"></i>
-                    Listening...
-                </div>
+    <div id="loginModal" class="login-modal">
+        <form id="loginForm" class="login-form">
+            <h2>Voice Assistant Authentication</h2>
+            <div>
+                <input type="password" id="passwordInput" placeholder="Enter password" required>
             </div>
-
-            <!-- Conversation Display -->
-            <div class="conversation">
-                <div id="conversationHistory" class="conversation-history">
-                    <div class="message system-message">
-                        <i class="fas fa-robot"></i>
-                        <span>Hi! I'm your real-time voice assistant. Hold the button and speak naturally for instant responses!</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Login Modal -->
-        <div id="loginModal" class="modal">
-            <div class="modal-content">
-                <h2><i class="fas fa-lock"></i> Authentication Required</h2>
-                <form id="loginForm">
-                    <input type="password" id="passwordInput" placeholder="Enter password" required>
-                    <button type="submit">
-                        <i class="fas fa-sign-in-alt"></i> Login
-                    </button>
-                </form>
-                <div id="loginError" class="error hidden">Invalid password</div>
-            </div>
-        </div>
+            <div class="error hidden" id="loginError">Invalid password</div>
+            <button type="submit">Login</button>
+        </form>
     </div>
 
-    <script src="/voice/static/voice-realtime.js?v=1725512400000"></script>
+    <div class="controls">
+        <button id="resetButton" title="Reset Session">
+            <svg xmlns="http://www.w3.org/2000/svg" height="32px" viewBox="0 -960 960 960" width="32px" fill="#ffffff">
+                <path d="M480-160q-134 0-227-93t-93-227q0-134 93-227t227-93q69 0 132 28.5T720-690v-110h80v280H520v-80h168q-32-56-87.5-88T480-720q-100 0-170 70t-70 170q0 100 70 170t170 70q77 0 139-44t87-116h84q-28 106-114 173t-196 67Z"/>
+            </svg>
+        </button>
+        <button id="startButton" title="Start Recording">
+            <svg viewBox="0 0 100 100" width="32px" height="32px" fill="#ff0000" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="50" cy="50" r="40"/>
+            </svg>
+        </button>
+        <button id="stopButton" title="Stop Recording" disabled>
+            <svg viewBox="0 0 100 100" width="32px" height="32px" fill="#000000" xmlns="http://www.w3.org/2000/svg">
+                <rect x="25" y="25" width="50" height="50" rx="8"/>
+            </svg>
+        </button>
+    </div>
+
+    <div id="status">Initializing...</div>
+
+    <script>
+        class GoogleStyleVoiceAssistant {
+            constructor() {
+                // Google's exact approach: separate contexts with specific sample rates
+                this.inputAudioContext = new (window.AudioContext || window.webkitAudioContext)({sampleRate: 16000});
+                this.outputAudioContext = new (window.AudioContext || window.webkitAudioContext)({sampleRate: 24000});
+                
+                this.isRecording = false;
+                this.websocket = null;
+                this.nextStartTime = 0;
+                this.sources = new Set();
+                this.mediaStream = null;
+                this.sourceNode = null;
+                this.scriptProcessorNode = null;
+                this.isAuthenticated = false;
+                
+                this.initializeElements();
+                this.setupEventListeners();
+                this.checkAuthentication();
+            }
+
+            initializeElements() {
+                this.resetButton = document.getElementById('resetButton');
+                this.startButton = document.getElementById('startButton');
+                this.stopButton = document.getElementById('stopButton');
+                this.status = document.getElementById('status');
+                this.loginModal = document.getElementById('loginModal');
+                this.loginForm = document.getElementById('loginForm');
+                this.passwordInput = document.getElementById('passwordInput');
+                this.loginError = document.getElementById('loginError');
+            }
+
+            setupEventListeners() {
+                this.resetButton.addEventListener('click', () => this.reset());
+                this.startButton.addEventListener('click', () => this.startRecording());
+                this.stopButton.addEventListener('click', () => this.stopRecording());
+                this.loginForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.authenticate();
+                });
+            }
+
+            async checkAuthentication() {
+                try {
+                    const response = await fetch('/voice/api/auth/check', {
+                        method: 'GET',
+                        credentials: 'same-origin'
+                    });
+                    
+                    if (response.ok) {
+                        this.isAuthenticated = true;
+                        this.hideLogin();
+                        this.initializeSession();
+                    } else {
+                        this.showLogin();
+                    }
+                } catch (error) {
+                    console.error('Auth check failed:', error);
+                    this.showLogin();
+                }
+            }
+
+            async authenticate() {
+                const password = this.passwordInput.value;
+                
+                try {
+                    const response = await fetch('/voice/api/auth/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ password }),
+                        credentials: 'same-origin'
+                    });
+
+                    if (response.ok) {
+                        this.isAuthenticated = true;
+                        this.hideLogin();
+                        this.loginError.classList.add('hidden');
+                        this.passwordInput.value = '';
+                        this.initializeSession();
+                    } else {
+                        this.loginError.classList.remove('hidden');
+                        this.passwordInput.value = '';
+                    }
+                } catch (error) {
+                    console.error('Authentication failed:', error);
+                    this.loginError.classList.remove('hidden');
+                    this.loginError.textContent = 'Authentication error';
+                }
+            }
+
+            showLogin() {
+                this.loginModal.classList.remove('hidden');
+                this.passwordInput.focus();
+            }
+
+            hideLogin() {
+                this.loginModal.classList.add('hidden');
+            }
+
+            initializeSession() {
+                if (!this.isAuthenticated) return;
+                
+                // Initialize audio contexts like Google's approach
+                this.nextStartTime = this.outputAudioContext.currentTime;
+                this.connectWebSocket();
+            }
+
+            connectWebSocket() {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}/voice/api/realtime`;
+                
+                this.websocket = new WebSocket(wsUrl);
+                
+                this.websocket.onopen = () => {
+                    this.updateStatus('Connected - Ready to start');
+                };
+                
+                this.websocket.onmessage = (event) => {
+                    const message = JSON.parse(event.data);
+                    this.handleWebSocketMessage(message);
+                };
+                
+                this.websocket.onclose = () => {
+                    this.updateStatus('Connection closed');
+                };
+                
+                this.websocket.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                    this.updateStatus('Connection error');
+                };
+            }
+
+            handleWebSocketMessage(message) {
+                switch (message.type) {
+                    case 'audio':
+                        // Google's immediate playback approach
+                        this.playAudioChunkGoogle(message.data);
+                        break;
+                    case 'text':
+                        console.log('AI response text:', message.text);
+                        break;
+                    case 'turn_complete':
+                        console.log('Turn complete');
+                        break;
+                    case 'interrupted':
+                        console.log('Interrupted - stopping all audio');
+                        this.handleInterruption();
+                        break;
+                }
+            }
+
+            async playAudioChunkGoogle(audioDataB64) {
+                try {
+                    // Google's exact scheduling approach
+                    this.nextStartTime = Math.max(
+                        this.nextStartTime,
+                        this.outputAudioContext.currentTime
+                    );
+
+                    // Decode base64 to audio buffer (Google's approach)
+                    const audioBuffer = await this.decodeAudioData(audioDataB64);
+                    
+                    const source = this.outputAudioContext.createBufferSource();
+                    source.buffer = audioBuffer;
+                    source.connect(this.outputAudioContext.destination);
+                    
+                    // Google's cleanup approach
+                    source.addEventListener('ended', () => {
+                        this.sources.delete(source);
+                    });
+
+                    source.start(this.nextStartTime);
+                    this.nextStartTime = this.nextStartTime + audioBuffer.duration;
+                    this.sources.add(source);
+
+                    console.log(`🔊 Playing audio: ${audioBuffer.duration.toFixed(3)}s`);
+
+                } catch (error) {
+                    console.error('Error playing audio:', error);
+                }
+            }
+
+            async decodeAudioData(audioDataB64) {
+                // Google's decoding approach adapted for our base64 data
+                const binaryString = atob(audioDataB64);
+                const data = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    data[i] = binaryString.charCodeAt(i);
+                }
+
+                const buffer = this.outputAudioContext.createBuffer(
+                    1, // mono
+                    data.length / 2, // 16-bit samples
+                    24000 // Gemini's output rate
+                );
+
+                const dataInt16 = new Int16Array(data.buffer);
+                const channelData = buffer.getChannelData(0);
+                
+                // Convert Int16 to Float32 (Google's approach)
+                for (let i = 0; i < dataInt16.length; i++) {
+                    channelData[i] = dataInt16[i] / 32768.0;
+                }
+
+                return buffer;
+            }
+
+            handleInterruption() {
+                // Google's interruption handling
+                for (const source of this.sources.values()) {
+                    try {
+                        source.stop();
+                        this.sources.delete(source);
+                    } catch (e) {
+                        // Source might already be stopped
+                    }
+                }
+                this.nextStartTime = 0;
+            }
+
+            async startRecording() {
+                if (this.isRecording) return;
+
+                await this.inputAudioContext.resume();
+                this.updateStatus('Requesting microphone access...');
+
+                try {
+                    this.mediaStream = await navigator.mediaDevices.getUserMedia({
+                        audio: true,
+                        video: false,
+                    });
+
+                    this.updateStatus('🔴 Recording...');
+
+                    this.sourceNode = this.inputAudioContext.createMediaStreamSource(this.mediaStream);
+                    
+                    // Google uses small buffer for low latency
+                    const bufferSize = 256;
+                    this.scriptProcessorNode = this.inputAudioContext.createScriptProcessor(
+                        bufferSize, 1, 1
+                    );
+
+                    this.scriptProcessorNode.onaudioprocess = (event) => {
+                        if (!this.isRecording) return;
+
+                        const inputBuffer = event.inputBuffer;
+                        const pcmData = inputBuffer.getChannelData(0);
+                        this.sendAudioToServer(pcmData);
+                    };
+
+                    this.sourceNode.connect(this.scriptProcessorNode);
+                    this.scriptProcessorNode.connect(this.inputAudioContext.destination);
+
+                    this.isRecording = true;
+                    this.startButton.disabled = true;
+                    this.stopButton.disabled = false;
+                    this.startButton.classList.remove('recording');
+                    this.stopButton.classList.add('recording');
+
+                } catch (err) {
+                    console.error('Error starting recording:', err);
+                    this.updateStatus(`Error: ${err.message}`);
+                    this.stopRecording();
+                }
+            }
+
+            sendAudioToServer(pcmData) {
+                // Convert Float32 to Int16 and then to base64 (Google's approach)
+                const int16 = new Int16Array(pcmData.length);
+                for (let i = 0; i < pcmData.length; i++) {
+                    int16[i] = pcmData[i] * 32768;
+                }
+
+                const uint8 = new Uint8Array(int16.buffer);
+                let binary = '';
+                for (let i = 0; i < uint8.length; i++) {
+                    binary += String.fromCharCode(uint8[i]);
+                }
+                const base64Audio = btoa(binary);
+
+                if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+                    this.websocket.send(JSON.stringify({
+                        type: 'audio',
+                        data: base64Audio
+                    }));
+                }
+            }
+
+            stopRecording() {
+                if (!this.isRecording) return;
+
+                this.updateStatus('Stopping recording...');
+                this.isRecording = false;
+
+                if (this.scriptProcessorNode && this.sourceNode) {
+                    this.scriptProcessorNode.disconnect();
+                    this.sourceNode.disconnect();
+                }
+
+                this.scriptProcessorNode = null;
+                this.sourceNode = null;
+
+                if (this.mediaStream) {
+                    this.mediaStream.getTracks().forEach(track => track.stop());
+                    this.mediaStream = null;
+                }
+
+                // Send end_turn like before (our backend expects this)
+                if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+                    this.websocket.send(JSON.stringify({
+                        type: 'end_turn'
+                    }));
+                }
+
+                this.startButton.disabled = false;
+                this.stopButton.disabled = true;
+                this.startButton.classList.remove('recording');
+                this.stopButton.classList.remove('recording');
+                this.updateStatus('Recording stopped - Ready to start again');
+            }
+
+            reset() {
+                if (this.isRecording) {
+                    this.stopRecording();
+                }
+                
+                this.handleInterruption();
+                
+                if (this.websocket) {
+                    this.websocket.close();
+                    this.connectWebSocket();
+                }
+                
+                this.updateStatus('Session reset');
+            }
+
+            updateStatus(message) {
+                this.status.textContent = message;
+                console.log('Status:', message);
+            }
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new GoogleStyleVoiceAssistant();
+        });
+    </script>
 </body>
 </html>
