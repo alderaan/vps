@@ -251,17 +251,34 @@ class RealtimeVoiceAssistant {
             
             // Use Web Audio API to capture PCM directly (like Google's example)
             const source = this.audioContext.createMediaStreamSource(this.audioStream);
-            this.scriptProcessor = this.audioContext.createScriptProcessor(4096, 1, 1);
+            // INCREASED BUFFER: 16384 samples = ~1 second at 16kHz (reduces API calls by 4x)
+            // Was: 4096 samples = ~256ms (4 calls/second)
+            this.scriptProcessor = this.audioContext.createScriptProcessor(16384, 1, 1);
             
             this.scriptProcessor.onaudioprocess = (event) => {
                 if (this.isRecording) {
                     const inputData = event.inputBuffer.getChannelData(0);
-                    // Convert Float32 to Int16 PCM
-                    const pcmData = new Int16Array(inputData.length);
+                    
+                    // Simple VAD: Check if audio level exceeds threshold
+                    let sum = 0;
                     for (let i = 0; i < inputData.length; i++) {
-                        pcmData[i] = Math.max(-1, Math.min(1, inputData[i])) * 0x7FFF;
+                        sum += Math.abs(inputData[i]);
                     }
-                    this.sendPCMAudioChunk(pcmData.buffer);
+                    const avgLevel = sum / inputData.length;
+                    
+                    // Only send if audio is above silence threshold (adjust as needed)
+                    const SILENCE_THRESHOLD = 0.01; // Typical silence is < 0.01
+                    if (avgLevel > SILENCE_THRESHOLD) {
+                        // Convert Float32 to Int16 PCM
+                        const pcmData = new Int16Array(inputData.length);
+                        for (let i = 0; i < inputData.length; i++) {
+                            pcmData[i] = Math.max(-1, Math.min(1, inputData[i])) * 0x7FFF;
+                        }
+                        this.sendPCMAudioChunk(pcmData.buffer);
+                        console.log(`📊 Audio sent (level: ${avgLevel.toFixed(4)})`);
+                    } else {
+                        console.log(`🔇 Silence detected (level: ${avgLevel.toFixed(4)}) - skipping`);
+                    }
                 }
             };
             
